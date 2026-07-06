@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#a89de0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Fit Timer">
+  <title>Fit Timer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════════════════════════════════
+     로딩 화면
+══════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-loading">
+  <div class="loading-inner">
+    <div class="loading-logo-wrap">
+      <img src="images/logo.svg" alt="logo" class="loading-logo-img">
+      <div class="loading-logo-text">Fit Timer</div>
+    </div>
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+  <!-- 수정구슬 장식 -->
+  <div class="crystal c1">🔮</div>
+  <div class="crystal c2">✨</div>
+  <div class="crystal c3">💜</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     로그인 / 회원가입
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-auth">
+  <div class="auth-header">
+    <img src="images/logo.svg" alt="logo" class="auth-logo-img">
+    <h1 class="auth-title">Fit Timer</h1>
+    <p class="auth-sub">성신여대 공부 파트너 🔮</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">로그인</button>
+      <button class="auth-tab" data-tab="signup">회원가입</button>
+    </div>
+    <div id="auth-login-form" class="auth-form">
+      <div class="auth-field"><label>이메일</label>
+        <input type="email" id="auth-login-email" placeholder="example@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field"><label>비밀번호</label>
+        <input type="password" id="auth-login-pw" placeholder="비밀번호" autocomplete="current-password">
+      </div>
+      <p class="auth-err" id="auth-login-err"></p>
+      <button class="btn btn-primary auth-btn" id="btn-auth-login">로그인 →</button>
+    </div>
+    <div id="auth-signup-form" class="auth-form hidden">
+      <div class="auth-field"><label>이메일</label>
+        <input type="email" id="auth-signup-email" placeholder="example@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field"><label>비밀번호 <small>(6자 이상)</small></label>
+        <input type="password" id="auth-signup-pw" placeholder="비밀번호" autocomplete="new-password">
+      </div>
+      <div class="auth-field"><label>비밀번호 확인</label>
+        <input type="password" id="auth-signup-pw2" placeholder="비밀번호 재입력" autocomplete="new-password">
+      </div>
+      <p class="auth-err" id="auth-signup-err"></p>
+      <button class="btn btn-primary auth-btn" id="btn-auth-signup">가입하기 →</button>
+    </div>
+    <button class="btn-guest" id="btn-auth-guest">로그인 없이 시작하기</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     메인 화면
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-main">
+  <header class="main-header">
+    <button class="hamburger-btn" id="btn-hamburger">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="main-title">
+      <img src="images/logo.svg" alt="" class="header-logo">
+      <span>Fit Timer</span>
+    </div>
+    <div style="width:44px"></div>
+  </header>
+
+  <!-- 방 씬 -->
+  <div class="room-scene">
+    <div class="room-baseboard"></div>
+
+    <!-- 왼쪽 벽: 달력(image3) → 플래너 -->
+    <div class="room-obj room-left-cal" onclick="navigate('planner')">
+      <img src="images/calendar-icon.png" alt="플래너" class="room-wall-img">
+      <span class="room-tag">📚 플래너</span>
+    </div>
+
+    <!-- 중앙 바닥: 수룡이+시계(image4) 서 있음 → 타이머 -->
+    <div class="room-obj room-center" onclick="navigate('timer')">
+      <img src="images/dragon-clock.png" alt="타이머" class="room-char-img">
+      <span class="room-tag">⏱ 타이머</span>
+    </div>
+
+    <!-- 오른쪽: 문(image2) → 수룡이방 -->
+    <div class="room-obj room-right-door" onclick="navigate('suryong')">
+      <img src="images/door.png" alt="수룡이방" class="room-door-img">
+      <span class="room-tag">🔮 수룡이 방</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     사이드 메뉴
+══════════════════════════════════════════════════ -->
+<div class="hidden" id="side-menu">
+  <div id="side-menu-overlay"></div>
+  <div id="side-menu-panel">
+    <div class="menu-header">
+      <img src="images/logo.svg" alt="" class="menu-logo">
+      <span class="menu-title">Fit Timer</span>
+      <button class="menu-close" onclick="closeMenu()">✕</button>
+    </div>
+    <nav class="menu-nav">
+      <button class="menu-item" data-nav="account">
+        <span class="menu-icon">👤</span> 계정
+      </button>
+      <div class="menu-item-group">
+        <button class="menu-item menu-parent" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="menu-icon">⏱</span> 타이머 <span class="menu-arrow">▾</span>
+        </button>
+        <div class="menu-sub">
+          <button class="menu-sub-item" onclick="startDirectTimer('ai')">
+            🧠 AI 타이머
+          </button>
+          <button class="menu-sub-item" onclick="startDirectTimer('set')">
+            ⏱ 설정 타이머
+          </button>
+        </div>
+      </div>
+      <button class="menu-item" data-nav="planner">
+        <span class="menu-icon">📚</span> 스터디 플래너
+      </button>
+      <button class="menu-item" data-nav="suryong">
+        <span class="menu-icon">🔮</span> 수룡이 방
+      </button>
+      <button class="menu-item" data-nav="settings">
+        <span class="menu-icon">⚙️</span> 설정
+      </button>
+    </nav>
+    <div class="menu-footer">
+      <span class="user-email-display" style="font-size:.78rem;color:#b0a8d0"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     계정 화면
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-account">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">계정</h2>
+  </div>
+  <div class="account-content">
+    <div class="account-section">
+      <div class="account-item">
+        <span class="account-label">이메일</span>
+        <span class="account-value" id="account-email-val">-</span>
+      </div>
+    </div>
+    <div class="account-section">
+      <button class="account-btn" id="btn-change-pw">🔑 비밀번호 변경</button>
+      <button class="account-btn account-btn-danger" id="btn-logout-confirm">🚪 로그아웃</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     비밀번호 변경 화면
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-change-pw">
+  <div class="sub-header">
+    <button class="back-btn" id="btn-back-account">← 뒤로</button>
+    <h2 class="sub-title">비밀번호 변경</h2>
+  </div>
+  <div class="pw-content">
+    <div class="pw-section">
+      <label class="pw-label">현재 비밀번호</label>
+      <div class="pw-input-wrap">
+        <input type="password" id="pw-current" placeholder="현재 비밀번호 입력">
+        <span class="pw-check" id="pw-current-check"></span>
+      </div>
+    </div>
+    <div class="pw-section">
+      <label class="pw-label">새 비밀번호</label>
+      <div class="pw-input-wrap">
+        <input type="password" id="pw-new" placeholder="새 비밀번호 (6자 이상)">
+      </div>
+      <div class="pw-input-wrap" style="margin-top:8px">
+        <input type="password" id="pw-new2" placeholder="새 비밀번호 확인">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btn-submit-pw" disabled style="width:100%;margin-top:16px">
+      변경하기
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     타이머 설정 화면
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-timer-setup">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">시간 설정</h2>
+  </div>
+  <div class="setup-content">
+    <div class="setup-card">
+      <p class="setup-question">🕐 평균 집중 시간은?</p>
+      <div class="slider-wrap">
+        <div class="slider-val" id="study-val">25분</div>
+        <input type="range" id="study-slider" min="20" max="120" value="25" step="5">
+        <div class="range-labels"><span>20분</span><span>120분</span></div>
+      </div>
+      <div class="divider"></div>
+      <p class="setup-question">🍵 얼마나 쉬면 집중력이 회복되나요?</p>
+      <div class="slider-wrap">
+        <div class="slider-val" id="rest-val">5분</div>
+        <input type="range" id="rest-slider" min="3" max="60" value="5" step="1">
+        <div class="range-labels"><span>3분</span><span>60분</span></div>
+      </div>
+      <div class="setup-btns-2">
+        <button class="btn btn-ghost" id="dont-know-study">집중 모르겠어요</button>
+        <button class="btn btn-ghost" id="dont-know-rest">휴식 모르겠어요</button>
+      </div>
+      <button class="btn btn-primary" id="btn-timer-setup-next" style="width:100%;margin-top:12px">
+        다음 →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     타이머 모드 선택
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-timer-mode">
+  <div class="sub-header">
+    <button class="back-btn" onclick="showScreen('screen-timer-setup')">← 뒤로</button>
+    <h2 class="sub-title">타이머 선택</h2>
+  </div>
+  <div class="mode-content">
+    <div class="mode-time-info" id="mode-time-info">집중 25분 · 휴식 5분</div>
+    <div class="mode-cards-grid">
+      <div class="mode-card" data-mode="ai">
+        <div class="mode-icon">🧠</div>
+        <div class="mode-title">AI 타이머</div>
+        <div class="mode-desc">집중도 분석으로<br>시간 자동 조절</div>
+        <div class="mode-tag mode-tag-purple">카메라 필요</div>
+      </div>
+      <div class="mode-card" data-mode="set">
+        <div class="mode-icon">⏱️</div>
+        <div class="mode-title">설정 타이머</div>
+        <div class="mode-desc">설정한 시간으로<br>안정적 집중</div>
+        <div class="mode-tag mode-tag-blue">졸음 감지 포함</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     타이머 화면
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-timer">
+  <div class="drowsy-banner hidden" id="drowsy-banner">
+    😴 졸음 감지! 일어나세요! 이번 세션 <span id="drowsy-count">0</span>회
+  </div>
+  <div class="timer-header">
+    <button class="back-btn" id="btn-end-session">✕ 종료</button>
+    <span id="timer-mode-label">AI 타이머</span>
+    <span class="timer-phase study" id="timer-phase">집중 세션</span>
+  </div>
+
+  <div class="timer-ring-wrap">
+    <div class="timer-ring-deco"></div>
+    <svg class="timer-ring-svg" viewBox="0 0 240 240" width="240" height="240">
+      <circle id="timer-ring-bg" cx="120" cy="120" r="108" fill="none" stroke-width="10"/>
+      <circle id="timer-ring"    cx="120" cy="120" r="108" fill="none"
+              stroke="var(--purple-mid)" stroke-width="10" stroke-linecap="round"
+              stroke-dasharray="678.58" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-center">
+      <div id="timer-phase-icon">🔮</div>
+      <div id="timer-time">25:00</div>
+    </div>
+  </div>
+
+  <div class="adjust-toast hidden" id="adjust-toast"></div>
+  <div class="subject-indicator hidden" id="subject-indicator">
+    <div class="subject-dot" id="subject-dot"></div>
+    <span id="subject-name-display">수학 공부 중</span>
+  </div>
+
+  <div class="time-info-row">
+    <div class="time-info-item">
+      <div class="time-info-label">집중</div>
+      <div class="time-info-val" id="study-min-display">25분</div>
+    </div>
+    <div class="time-info-item">
+      <div class="time-info-label">휴식</div>
+      <div class="time-info-val" id="rest-min-display">5분</div>
+    </div>
+  </div>
+
+  <div class="timer-controls">
+    <button class="btn btn-ghost" id="btn-pause-resume">일시정지</button>
+    <button class="btn btn-ghost" id="btn-skip">다음 단계 →</button>
+  </div>
+  <div class="timer-bottom-row">
+    <button class="btn btn-ghost" id="btn-toggle-camera">📷 카메라</button>
+  </div>
+
+  <div class="camera-area hidden" id="camera-area">
+    <video id="camera-video" autoplay muted playsinline></video>
+    <canvas id="camera-canvas" width="320" height="240"></canvas>
+  </div>
+  <div class="tb-score-display" id="tb-score-display"></div>
+  <div class="eye-status" id="eye-status">👁 준비 중...</div>
+
+  <div class="blink-stats hidden" id="blink-stats">
+    <div class="bs-item"><span class="bs-label">깜빡임</span><span class="bs-val" id="bs-count">0회</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">분당</span><span class="bs-val" id="bs-rate">--/분</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">평균</span><span class="bs-val" id="bs-avg">측정 중</span></div>
+  </div>
+
+  <div class="focus-log-panel hidden" id="focus-log-panel">
+    <div class="fl-panel-header">
+      <span class="fl-panel-title">📊 AI 조정 기록</span>
+      <span class="fl-panel-sub" id="fl-panel-sub">집중도 변화가 생기면 여기에 표시돼요</span>
+    </div>
+    <div class="fl-list" id="focus-log-list"></div>
+  </div>
+
+  <div class="calib-overlay hidden" id="calib-overlay">
+    <div class="calib-eye-icon">👁</div>
+    <div class="calib-title">눈 인식 보정 중이에요</div>
+    <div class="calib-desc">카메라를 정면으로 바라보고<br>자연스럽게 눈을 깜빡여 주세요 ☺️</div>
+    <div class="calib-bar-wrap"><div class="calib-bar" id="calib-bar"></div></div>
+  </div>
+  <div id="camera-warning" class="toast toast-warn hidden"></div>
+</div>
+
+<!-- 복습 팝업 모달 (쉬는 시간) -->
+<div class="rv-break-overlay hidden" id="review-break-modal">
+  <div class="rv-break-panel" id="review-break-content">
+    <!-- JS로 동적 렌더링 -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     스터디 플래너
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-planner">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">스터디 플래너</h2>
+  </div>
+
+  <!-- 날짜 선택 헤더 -->
+  <div class="planner-date-row">
+    <div class="planner-date-display" id="planner-date-display">오늘</div>
+    <button class="cal-open-btn" onclick="openCalendar()">📅 날짜 선택</button>
+  </div>
+
+  <div class="planner-body">
+    <div class="planner-summary" id="planner-summary">
+      <span class="summary-empty">아직 기록이 없어요 🔮</span>
+    </div>
+
+    <div class="planner-section">
+      <div class="section-title-row">📊 타임라인</div>
+      <div id="planner-timeline">
+        <div class="tl-empty">공부를 시작하면 타임라인이 표시돼요</div>
+      </div>
+    </div>
+
+    <div id="session-list"></div>
+
+    <div class="planner-section textbook-section">
+      <div class="section-title-row">
+        <span>📚 등록된 교재</span>
+        <button class="btn btn-ghost btn-sm" id="btn-add-textbook">+ 추가</button>
+      </div>
+      <div id="textbook-list">
+        <div class="tb-empty">등록된 교재가 없어요</div>
+      </div>
+    </div>
+
+    <!-- 복습 알람 -->
+    <div class="planner-section review-section">
+      <div class="section-title-row">
+        🔔 오늘의 복습 일정
+        <button class="btn btn-ghost btn-sm" id="btn-push-permission"
+          onclick="Review.requestPushPermission().then(ok => { if(ok) this.textContent='✓ 알림 허용됨'; })">
+          📲 알림 허용
+        </button>
+      </div>
+      <div id="planner-review-list">
+        <div class="rv-empty">오늘 복습 일정이 없어요 ✨</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 달력 모달 -->
+  <div class="calendar-modal hidden" id="calendar-modal">
+    <div class="calendar-backdrop" onclick="closeCalendar()"></div>
+    <div class="calendar-popup">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calPrev()">◀</button>
+        <span class="cal-month" id="cal-month-label">2024년 1월</span>
+        <button class="cal-nav" onclick="calNext()">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <button class="btn btn-ghost" onclick="selectPlannerDate(PlannerManager.today())" style="width:100%;margin-top:8px">
+        오늘로 돌아가기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     수룡이 방
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-suryong">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">🔮 수룡이 방</h2>
+  </div>
+
+  <div class="sroom-scene">
+    <div class="room-baseboard"></div>
+
+    <!-- 좌상단: 미션 게시판 -->
+    <div class="sroom-missionboard">
+      <div class="mboard-pin">📌</div>
+      <div class="mboard-title">오늘의 미션</div>
+      <div id="mission-panel"></div>
+      <div class="gauge-section">
+        <div class="gauge-label-row">
+          <span class="gauge-stage-name" id="suryong-name">알</span>
+          <span class="gauge-pts-badge" id="suryong-pts">0점</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-bar" id="suryong-gauge-bar" style="width:0%"></div>
+        </div>
+        <div class="gauge-sub" id="suryong-gauge-label">0 / 3 점</div>
+        <div class="gauge-next-hint" id="gauge-next-hint">다음 단계까지 3점!</div>
+      </div>
+    </div>
+
+    <!-- 중앙: 수룡이 캐릭터 -->
+    <div class="sroom-char">
+      <div class="suryong-stage-badge" id="suryong-stage-badge">🥚 알</div>
+      <img id="suryong-img" src="images/suryong/su1.jpg" alt="수룡이" class="suryong-char-img">
+      <div class="suryong-center-name" id="suryong-center-name">처음 만나는 알이에요!</div>
+    </div>
+
+    <!-- 우측: 진열장 (클릭 시 팝업) -->
+    <div class="sroom-cabinet" onclick="openCollections()">
+      <div class="cabinet-body">
+        <div class="cabinet-shelf" id="cabinet-shelf-1">
+          <div class="cabinet-slot"></div><div class="cabinet-slot"></div>
+        </div>
+        <div class="cabinet-divider"></div>
+        <div class="cabinet-shelf" id="cabinet-shelf-2">
+          <div class="cabinet-slot"></div><div class="cabinet-slot"></div>
+        </div>
+        <div class="cabinet-divider"></div>
+        <div class="cabinet-shelf" id="cabinet-shelf-3">
+          <div class="cabinet-slot"></div><div class="cabinet-slot"></div>
+        </div>
+      </div>
+      <span class="room-tag" id="cabinet-tag">🏆 진열장 보기</span>
+    </div>
+  </div>
+
+  <!-- 컬렉션 팝업 -->
+  <div class="modal-overlay hidden" id="collections-modal">
+    <div class="modal-panel">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>🏆 졸업 수룡이 컬렉션</h3>
+        <button onclick="document.getElementById('collections-modal').classList.add('hidden')"
+          style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-dim);line-height:1">✕</button>
+      </div>
+      <div id="collection-grid" class="collection-grid">
+        <div class="collection-empty">아직 졸업한 수룡이가 없어요<br><small>학사모까지 키워보세요! 🔮</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 미션 상세 팝업 -->
+  <div class="modal-overlay hidden" id="mission-detail-modal">
+    <div class="modal-panel mission-detail-panel">
+      <div class="md-header">
+        <span class="md-icon" id="md-icon">📚</span>
+        <button class="md-close"
+          onclick="document.getElementById('mission-detail-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="md-title" id="md-title">미션 이름</div>
+      <div class="md-desc"  id="md-desc">미션 설명</div>
+      <div class="md-pts"   id="md-pts">+1점</div>
+      <div class="md-actions">
+        <button class="mission-claim-btn md-claim" id="md-claim-btn" style="display:none"
+          onclick="SuryongRoom.onMissionDetailClaim()">🎁 점수 받기</button>
+        <div class="md-done"     id="md-done"     style="display:none">✅ 이미 받았어요</div>
+        <div class="md-disabled" id="md-disabled" style="display:none">준비 중이에요 🔮</div>
+        <div class="md-pending"  id="md-pending"  style="display:none">미션을 완료하면 점수 받기 버튼이 활성화돼요!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 과잠 학과 선택 모달 -->
+  <div class="modal-overlay hidden" id="dept-select-modal">
+    <div class="modal-panel dept-modal">
+      <div class="modal-header">
+        <h3>🎽 학과를 선택해주세요!</h3>
+        <p>과잠 수룡이의 학과를 정해주세요</p>
+      </div>
+      <div class="dept-select-grid" id="dept-select-grid"></div>
+    </div>
+  </div>
+
+  <!-- 성장 애니메이션 -->
+  <div class="evo-overlay hidden" id="evolution-overlay">
+    <div class="evo-content">
+      <div class="evo-sparkles">✨🎊✨</div>
+      <img class="evo-img" src="images/suryong/su1.jpg" alt="">
+      <div class="evo-title">진화!</div>
+      <div class="evo-name"></div>
+      <div class="evo-desc"></div>
+    </div>
+  </div>
+
+  <!-- 졸업 오버레이 -->
+  <div class="grad-overlay hidden" id="graduation-overlay">
+    <div class="grad-content">
+      <div class="grad-emoji">🎓🎉🎓</div>
+      <h2>졸업을 축하해요!</h2>
+      <p class="grad-dept"></p>
+      <p>수룡이가 수집함에 추가되었어요!</p>
+      <button class="btn btn-primary" onclick="document.getElementById('graduation-overlay').classList.add('hidden');SuryongRoom.refresh();">
+        닫기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     설정
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-settings">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">설정</h2>
+  </div>
+  <div class="settings-content">
+    <div class="settings-section">
+      <div class="settings-title">⏱ 타이머 시간 설정</div>
+      <div class="slider-wrap">
+        <label class="settings-label">집중 시간</label>
+        <div class="slider-val" id="settings-study-val">25분</div>
+        <input type="range" id="settings-study-slider" min="20" max="120" value="25" step="5">
+        <div class="range-labels"><span>20분</span><span>120분</span></div>
+      </div>
+      <div class="slider-wrap" style="margin-top:16px">
+        <label class="settings-label">휴식 시간</label>
+        <div class="slider-val" id="settings-rest-val">5분</div>
+        <input type="range" id="settings-rest-slider" min="3" max="60" value="5" step="1">
+        <div class="range-labels"><span>3분</span><span>60분</span></div>
+      </div>
+      <button class="btn btn-primary" id="btn-save-settings" style="width:100%;margin-top:16px">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     교재 등록
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-textbook">
+  <div class="sub-header">
+    <button class="btn btn-ghost btn-sm" id="btn-reg-back">← 취소</button>
+    <h2 class="sub-title">교재 등록</h2>
+    <div style="width:60px"></div>
+  </div>
+  <div class="reg-camera-wrap">
+    <video id="reg-video" autoplay muted playsinline></video>
+    <div class="reg-guide-box">
+      <div class="reg-corner tl"></div><div class="reg-corner tr"></div>
+      <div class="reg-corner bl"></div><div class="reg-corner br"></div>
+    </div>
+    <div class="reg-guide-hint">교재 표지를 박스 안에 맞춰주세요</div>
+  </div>
+  <div id="reg-before-capture">
+    <button class="btn btn-primary" id="btn-capture" style="padding:14px 36px;font-size:1rem">📷 촬영하기</button>
+  </div>
+  <div id="reg-after-capture" class="hidden">
+    <div class="reg-preview-wrap">
+      <canvas id="reg-preview" width="120" height="90"></canvas>
+      <div class="reg-detected-msg">✓ 교재를 인식했어요!</div>
+    </div>
+    <div class="reg-input-wrap">
+      <label class="reg-input-label">무슨 과목으로 저장할까요?</label>
+      <input type="text" id="reg-subject-input" placeholder="예: 수학, 영어, 국어" maxlength="20">
+    </div>
+    <div class="reg-actions">
+      <button class="btn btn-ghost" id="btn-reg-retake">다시 촬영</button>
+      <button class="btn btn-primary" id="btn-reg-save">저장하기 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 미션 완료 토스트 -->
+<div class="mission-toast hidden" id="mission-toast"></div>
+
+</div><!-- /app -->
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"   crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"           crossorigin="anonymous"></script>
+<!-- 앱 -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/alarm.js"></script>
+<script src="js/tracker.js"></script>
+<script src="js/blink.js"></script>
+<script src="js/drowsy.js"></script>
+<script src="js/timer.js"></script>
+<script src="js/textbook.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/suryong.js"></script>
+<script src="js/review.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
