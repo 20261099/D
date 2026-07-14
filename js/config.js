@@ -1,13 +1,11 @@
 // ===== Firebase 설정 =====
-// 팀 Firebase 프로젝트 생성 후 아래 값을 교체하세요
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAB1aM25FYhjUZ6K9CXrJrTA9g-wmNLZO0",
-  authDomain: "aistudy-c24c0.firebaseapp.com",
-  projectId: "aistudy-c24c0",
-  storageBucket: "aistudy-c24c0.firebasestorage.app",
-  messagingSenderId: "456559292708",
-  appId: "1:456559292708:web:c3e663b28552d3ad5a43b1",
-  measurementId: "G-0ZVPH2VFVD"
+  apiKey: "AIzaSyDFPJeTk8defHkvybhghHDu_wxwR9wzRFI",
+  authDomain: "fit-timer-17e94.firebaseapp.com",
+  projectId: "fit-timer-17e94",
+  storageBucket: "fit-timer-17e94.firebasestorage.app",
+  messagingSenderId: "481643850348",
+  appId: "1:481643850348:web:d52959cc8e6a4c260f8649"
 };
 
 // Firebase가 설정되지 않은 경우 localStorage 폴백 사용

@@ -77,7 +77,7 @@ self.addEventListener('push', event => {
     self.registration.showNotification(data.title || '📚 복습 알림', {
       body:    data.body  || '복습할 내용이 있어요!',
       icon:    data.icon  || '/icons/icon-192.png',
-      badge:   data.badge || '/icons/icon-72.png',
+      badge:   data.badge || '/icons/icon-192.png',
       tag:     'review-' + (data.data?.studiedDate || Date.now()),
       renotify: false,
       data:    data.data || {}

@@ -560,21 +560,12 @@ function onPhaseChange(phase, sMin, rMin) {
     }).catch(() => {});
     updateSubjectIndicator(null);
 
-    // 복습 팝업 체크
+    // 복습 팝업 체크: 방금 공부를 마친 교재에 오늘 마감인 복습이 있으면 물어본다.
     if (typeof Review !== 'undefined') {
       const lastTb = Planner.getCurrentSubject();
       const tbId   = lastTb?.textbookId || AppState._lastTextbookId;
-      if (tbId) {
-        const result = Review.checkBreak(tbId);
-        if (result) ReviewUI.showBreakPopup(result, result.phase);
-      } else {
-        // done_ask 단계면 textbook 무관하게 팝업
-        const sess = Review.getSession();
-        if (sess.phase === 'done') {
-          const rv = Review.schedules.find(s => s.id === sess.reviewId);
-          if (rv) ReviewUI.showBreakPopup({ review: rv }, 'done');
-        }
-      }
+      const result = Review.checkBreak(tbId);
+      if (result) ReviewUI.showBreakPopup(result);
     }
   } else {
     DrowsyDetector.start();

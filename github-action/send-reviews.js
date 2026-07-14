@@ -57,24 +57,27 @@ async function run() {
         continue;
       }
 
-      // 같은 과목+날짜는 한 번만 알림 (중복 방지)
+      // 같은 과목+날짜+주기는 한 번만 알림 (중복 방지)
+      // ※ 1일 후 / 1주일 후 / 30일 후는 서로 다른 주기이므로 따로 알림이 감
       const sent = new Set();
+      const CYCLE_LABEL = { day1: '1일 후', week1: '1주일 후', month1: '30일 후' };
 
       for (const doc of reviewsSnap.docs) {
         const r   = doc.data();
-        const key = `${r.studiedDate}__${r.subjectName}`;
+        const key = `${r.studiedDate}__${r.subjectName}__${r.type}`;
         if (sent.has(key)) continue;
         sent.add(key);
 
         const [, m, d] = (r.studiedDate || '').split('-');
-        const body = `${m}월 ${d}일에 공부한 ${r.subjectName} 내용을 복습하실 시간이에요!`;
+        const cycle = CYCLE_LABEL[r.type] || '';
+        const body = `${m}월 ${d}일에 공부한 ${r.subjectName} 내용을 복습하실 시간이에요! (${cycle})`;
 
         const payload = JSON.stringify({
           title: '📚 복습 시간이에요!',
           body,
           icon:  '/icons/icon-192.png',
-          badge: '/icons/icon-72.png',
-          tag:   `review-${r.studiedDate}-${r.subjectName}`,
+          badge: '/icons/icon-192.png',
+          tag:   `review-${r.studiedDate}-${r.subjectName}-${r.type}`,
           data:  {
             studiedDate: r.studiedDate,
             subjectName: r.subjectName,

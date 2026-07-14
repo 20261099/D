@@ -945,8 +945,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   margin-bottom: 7px; transition: all .18s;
 }
 .rv-item:last-child { margin-bottom: 0; }
-.rv-item.rv-done    { background: #edf7f2; border-color: #b8dfca; opacity: .75; }
-.rv-item.rv-overdue { background: #fff8e6; border-color: #ffd966; }
+.rv-item.rv-done       { background: #edf7f2; border-color: #b8dfca; opacity: .75; }
+.rv-item.rv-missed     { background: #fbeeee; border-color: #f3c2c2; opacity: .65; }
 .rv-dot   { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .rv-info  { flex: 1; }
 .rv-subject { font-size: .85rem; font-weight: 800; color: var(--text); }
