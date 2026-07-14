@@ -16,7 +16,7 @@
 
 // ── VAPID 공개키 (서버의 개인키와 쌍) ─────────────────────────
 const VAPID_PUBLIC_KEY =
-  'BJiTt-SGk73nKeQjXtoluMVm1vG2Gt451ojfF0eMKsHFwtO5F_mfCUhlwqKnPe4b13YODTeNL8tc5g9PXe_fr9w';
+     'BPxiR4wdv4ZVRvLMifk_w2SQKvslSSJPeX_ns4zQdSBtlAuYFnkFyt2IWQa8BTyH83lL8yI1Z9KC_2ezWuAR0Ak';
 
 // ─────────────────────────────────────────────────────────────
 class ReviewManager {
