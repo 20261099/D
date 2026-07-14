@@ -1,0 +1,32 @@
+name: Send Review Push Notifications
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-reviews:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: github-action
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 의존성 설치
+        run: npm install
+
+      - name: 복습 알림 발송
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          VAPID_PUBLIC_KEY:         ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY:        ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_EMAIL:              ${{ secrets.VAPID_EMAIL }}
+        run: node send-reviews.js
