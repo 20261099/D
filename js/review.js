@@ -16,7 +16,7 @@
 
 // ── VAPID 공개키 (서버의 개인키와 쌍) ─────────────────────────
 const VAPID_PUBLIC_KEY =
-     'BPxiR4wdv4ZVRvLMifk_w2SQKvslSSJPeX_ns4zQdSBtlAuYFnkFyt2IWQa8BTyH83lL8yI1Z9KC_2ezWuAR0Ak';
+  'BPxiR4wdv4ZVRvLMifk_w2SQKvslSSJPeX_ns4zQdSBtlAuYFnkFyt2IWQa8BTyH83lL8yI1Z9KC_2ezWuAR0Ak';
 
 // ─────────────────────────────────────────────────────────────
 class ReviewManager {
@@ -61,8 +61,23 @@ class ReviewManager {
   isEnabled(textbookId) { return this.enabled[textbookId] === true; }
 
   async setEnabled(textbookId, value) {
+    const wasEnabled = this.isEnabled(textbookId);
     this.enabled[textbookId] = value;
     await this._save();
+
+    // 방금 껐다가 켠 게 아니라 "새로 켠" 경우 + 오늘 이미 그 교재를 공부했다면,
+    // 그 공부 기록에 대한 복습 스케줄을 지금 시점에 소급해서 만들어준다.
+    // (토글이 꺼진 채로 공부를 마치면 원래 onStudySessionEnd가 스킵되므로,
+    //  나중에 토글만 켜서는 스케줄이 저절로 생기지 않기 때문)
+    if (value && !wasEnabled && typeof Planner !== 'undefined') {
+      const today = this._today();
+      const todaySession = Planner.sessions.find(s =>
+        s.textbookId === textbookId && s.date === today
+      );
+      if (todaySession) {
+        await this.onStudySessionEnd(textbookId, todaySession.subjectName, today);
+      }
+    }
   }
 
   // ── 공부 세션 종료 → 복습 스케줄 등록 (1일 / 1주일 / 30일 후) ─
