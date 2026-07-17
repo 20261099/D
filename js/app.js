@@ -192,8 +192,10 @@ async function initApp(user) {
     await Suryong.init();
     await Review.init();
 
-    // 앱 열릴 때: 밀린 복습 알람 즉시 표시 (백그라운드 알람 못 받았을 경우 대비)
-    setTimeout(() => _checkOverdueReviews(), 2000);
+    // ※ 예전엔 여기서 "밀린 복습 알람"을 앱 오픈시 즉시 브라우저 알림으로 띄웠는데,
+    //   이제 서버(GitHub Actions)가 매일 안정적으로 푸시를 보내주기 때문에 제거함.
+    //   (서버 알림을 이미 받았는데 앱을 열면 똑같은 내용이 또 뜨는 중복 문제가 있었음)
+    //   앱을 열면 플래너 화면에서 미완료 복습이 🔔 표시로 그대로 보이므로 놓칠 걱정 없음.
 
     // Push 권한 자동 요청 (이미 있으면 조용히 재구독)
     if ('Notification' in window) {
@@ -812,31 +814,6 @@ document.getElementById('reg-subject-input')?.addEventListener('keydown', e => {
 // 수룡이방 진열장 팝업
 // ─────────────────────────────────────────────────────────────
 
-// 앱 열릴 때 밀린 복습 알람을 브라우저 알림으로 즉시 표시
-function _checkOverdueReviews() {
-  if (typeof Review === 'undefined') return;
-  const overdue = Review.getOverdueReviews();
-  if (!overdue.length) return;
-  if (Notification.permission !== 'granted') return;
-
-  // 중복 방지: 오늘 이미 알림 보낸 것 체크
-  const todayKey = 'review_notified_' + new Date().toLocaleDateString('sv-SE');
-  const notified = JSON.parse(localStorage.getItem(todayKey) || '[]');
-
-  overdue.forEach(r => {
-    const key = r.id;
-    if (notified.includes(key)) return;
-    const [,m,d] = (r.studiedDate || '').split('-');
-    new Notification('📚 복습 시간이에요!', {
-      body: `${m}월 ${d}일에 공부한 ${r.subjectName} 내용을 복습하실 시간이에요!`,
-      icon: '/icons/icon-192.png',
-      tag:  'review-' + key
-    });
-    notified.push(key);
-  });
-
-  localStorage.setItem(todayKey, JSON.stringify(notified));
-}
 
 function openCollections() {
   SuryongRoom._renderCollections();
