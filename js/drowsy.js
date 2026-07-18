@@ -62,8 +62,11 @@ class DrowsinessDetector {
 
   // 교재 인식 후 호출 → 얼굴 없음 타이머 리셋 (알람 방지)
   resetFaceGoneTimer() {
-    this._faceGoneStart  = null;
-    this._handStillStart = null;
+    this._faceGoneStart    = null;
+    this._handStillStart   = null;
+    // 교재 스캔 중 얼굴 사라짐 반복(face_lost_cycle) 카운트도 리셋
+    this._faceLostHistory  = [];
+    this._prevFaceDetected = true;
   }
 
   update() {

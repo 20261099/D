@@ -24,6 +24,9 @@ class TrackerManager {
     this.handVelocity  = 0;
     this._prevHandPos  = null;
 
+    // 교재 인식용: 마지막으로 감지된 얼굴 바운딩박스 (픽셀 단위)
+    this.lastFaceBBox  = null;
+
     this._onResultCbs  = [];
     this.isRunning     = false;
   }
@@ -110,6 +113,23 @@ class TrackerManager {
     this.faceDetected = true;
     const lm = results.multiFaceLandmarks[0];
 
+    // 얼굴 바운딩박스 계산 (교재 인식 후보 영역 생성에 사용)
+    // 항상 비디오 실제 해상도 기준으로 bbox 계산 (캔버스 크기와 일치하지 않을 수 있음)
+    const W = this.videoEl?.videoWidth  || this.canvasEl?.width  || 320;
+    const H = this.videoEl?.videoHeight || this.canvasEl?.height || 240;
+    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    for (const p of lm) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    this.lastFaceBBox = {
+      x: minX * W, y: minY * H,
+      w: (maxX - minX) * W,
+      h: (maxY - minY) * H
+    };
+
     const lEAR = this._calcEAR(lm, [33, 160, 158, 133, 153, 144]);
     const rEAR = this._calcEAR(lm, [362, 385, 387, 263, 373, 380]);
     this.currentEAR = (lEAR + rEAR) / 2;
@@ -184,7 +204,8 @@ class TrackerManager {
   getCentroidY()    { return this.faceCentroidY; }
   getHandVelocity() { return this.handVelocity; }
   getRollDegree()   { return this.faceRollDeg; }
-  getYawDegree()    { return this.faceRollDeg; } // alias (lateral nod detection)
+  getYawDegree()    { return this.faceRollDeg; }
+  getFaceBBox()     { return this.lastFaceBBox; } // 교재 인식용
 
   isEyeClosed() {
     if (!this.calibDone || this.currentEAR === null) return false;

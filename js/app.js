@@ -737,18 +737,25 @@ function setupTimerControls() {
 // ─────────────────────────────────────────────────────────────
 document.getElementById('btn-add-textbook')?.addEventListener('click', () => openTextbookRegister());
 
+// ── 교재 등록 상태 ─────────────────────────────────────────
+let _regCapturedCanvas = null; // 촬영된 원본 프레임 (canvas)
+let _cropRect          = null; // {x,y,w,h} | null = 전체
+let _cropDragging      = false;
+let _cropDragStart     = null;
+
 async function openTextbookRegister() {
   DrowsyDetector.stop(); Alarm.stopDrowsinessAlarm();
   document.getElementById('drowsy-banner')?.classList.add('hidden');
   showScreen('screen-textbook');
-  resetRegisterState();
+  _resetRegState();
   await startRegCamera();
 }
 
-function resetRegisterState() {
+function _resetRegState() {
+  _regCapturedCanvas = null; _cropRect = null;
   capturedHist = null; capturedThumb = null;
-  document.getElementById('reg-before-capture')?.classList.remove('hidden');
-  document.getElementById('reg-after-capture')?.classList.add('hidden');
+  document.getElementById('reg-step-camera')?.classList.remove('hidden');
+  document.getElementById('reg-step-crop')?.classList.add('hidden');
   const inp = document.getElementById('reg-subject-input');
   if (inp) inp.value = '';
 }
@@ -757,7 +764,7 @@ async function startRegCamera() {
   const videoEl = document.getElementById('reg-video');
   try {
     regStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: 320, height: 240 }
+      video: { facingMode: { ideal: 'environment' }, width: 640, height: 480 }
     });
   } catch {
     try { regStream = await navigator.mediaDevices.getUserMedia({ video: true }); }
@@ -772,38 +779,157 @@ function stopRegCamera() {
   if (v) v.srcObject = null;
 }
 
+// 크롭 캔버스 좌표 변환
+function _cropCanvasCoords(evt) {
+  const c    = document.getElementById('reg-crop-canvas');
+  const rect = c.getBoundingClientRect();
+  const sx   = c.width  / rect.width;
+  const sy   = c.height / rect.height;
+  // 터치 이벤트 대응
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
+}
+
+function _drawCropPreview() {
+  const c = document.getElementById('reg-crop-canvas');
+  if (!c || !_regCapturedCanvas) return;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.drawImage(_regCapturedCanvas, 0, 0);
+
+  if (_cropRect && _cropRect.w > 0 && _cropRect.h > 0) {
+    // 바깥 어둡게
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, c.width, _cropRect.y);
+    ctx.fillRect(0, _cropRect.y + _cropRect.h, c.width, c.height - _cropRect.y - _cropRect.h);
+    ctx.fillRect(0, _cropRect.y, _cropRect.x, _cropRect.h);
+    ctx.fillRect(_cropRect.x + _cropRect.w, _cropRect.y, c.width - _cropRect.x - _cropRect.w, _cropRect.h);
+    // 선택 영역 테두리
+    ctx.strokeStyle = '#33d6a6';
+    ctx.lineWidth   = Math.max(2, c.width * 0.005);
+    ctx.strokeRect(_cropRect.x, _cropRect.y, _cropRect.w, _cropRect.h);
+  }
+}
+
+// 크롭 캔버스 드래그 이벤트
+(function setupCropDrag() {
+  const c = document.getElementById('reg-crop-canvas');
+  if (!c) return;
+
+  function onStart(e) {
+    if (!_regCapturedCanvas) return;
+    e.preventDefault();
+    _cropDragging = true;
+    _cropDragStart = _cropCanvasCoords(e);
+    _cropRect = { x: _cropDragStart.x, y: _cropDragStart.y, w: 0, h: 0 };
+    _drawCropPreview();
+  }
+  function onMove(e) {
+    if (!_cropDragging) return;
+    e.preventDefault();
+    const cur = _cropCanvasCoords(e);
+    _cropRect = {
+      x: Math.min(_cropDragStart.x, cur.x),
+      y: Math.min(_cropDragStart.y, cur.y),
+      w: Math.abs(cur.x - _cropDragStart.x),
+      h: Math.abs(cur.y - _cropDragStart.y)
+    };
+    _drawCropPreview();
+  }
+  function onEnd() {
+    _cropDragging = false;
+    if (_cropRect && (_cropRect.w < 20 || _cropRect.h < 20)) _cropRect = null;
+    _drawCropPreview();
+  }
+
+  c.addEventListener('pointerdown',  onStart);
+  c.addEventListener('pointermove',  onMove);
+  c.addEventListener('pointerup',    onEnd);
+  c.addEventListener('pointercancel',onEnd);
+})();
+
 document.getElementById('btn-reg-back')?.addEventListener('click', () => {
   stopRegCamera(); navigate('planner');
 });
+
+// 촬영 버튼
 document.getElementById('btn-capture')?.addEventListener('click', () => {
   const videoEl = document.getElementById('reg-video');
   if (!videoEl?.readyState || videoEl.readyState < 2) { alert('카메라가 준비 중이에요.'); return; }
-  capturedHist  = TextbookMgr.extractHistogram(videoEl);
-  capturedThumb = TextbookMgr.captureThumbnail(videoEl);
-  const preview = document.getElementById('reg-preview');
-  if (preview) {
-    const ctx = preview.getContext('2d');
-    const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0, preview.width, preview.height);
-    img.src = capturedThumb;
-  }
-  document.getElementById('reg-before-capture')?.classList.add('hidden');
-  document.getElementById('reg-after-capture')?.classList.remove('hidden');
+
+  // 프레임 캡처
+  const c   = document.createElement('canvas');
+  c.width   = videoEl.videoWidth;
+  c.height  = videoEl.videoHeight;
+  c.getContext('2d').drawImage(videoEl, 0, 0);
+  _regCapturedCanvas = c;
+  _cropRect = null;
+
+  // 크롭 캔버스 준비
+  const cropCanvas = document.getElementById('reg-crop-canvas');
+  cropCanvas.width  = c.width;
+  cropCanvas.height = c.height;
+  _drawCropPreview();
+
+  // 화면 전환
+  document.getElementById('reg-step-camera')?.classList.add('hidden');
+  document.getElementById('reg-step-crop')?.classList.remove('hidden');
   document.getElementById('reg-subject-input')?.focus();
 });
-document.getElementById('btn-reg-retake')?.addEventListener('click', resetRegisterState);
+
+// 전체 선택 초기화
+document.getElementById('btn-crop-reset')?.addEventListener('click', () => {
+  _cropRect = null; _drawCropPreview();
+});
+
+// 다시 촬영
+document.getElementById('btn-reg-retake')?.addEventListener('click', () => {
+  _resetRegState();
+});
+
+// 저장
 document.getElementById('btn-reg-save')?.addEventListener('click', async () => {
   const name = document.getElementById('reg-subject-input')?.value.trim();
-  if (!name) { alert('과목 이름을 입력해주세요.'); return; }
-  if (!capturedHist || !capturedThumb) { alert('교재를 먼저 촬영해주세요.'); return; }
+  if (!name)                  { alert('과목 이름을 입력해주세요.'); return; }
+  if (!_regCapturedCanvas)    { alert('교재를 먼저 촬영해주세요.'); return; }
+
   const btn = document.getElementById('btn-reg-save');
   btn.disabled = true; btn.textContent = '저장 중...';
-  const color = TextbookMgr.getColorForSubject(name);
-  await TextbookMgr.register({ subjectName: name, color, thumbnail: capturedThumb, histogram: capturedHist });
-  btn.disabled = false; btn.textContent = '저장하기 →';
-  stopRegCamera();
-  navigate('planner');
-  Planner.renderAll(PlannerManager.today());
+  try {
+    // 크롭 영역(또는 전체)에서 pHash + 썸네일 추출
+    const histogram = TextbookMgr.extractHistogram(
+      { videoWidth: _regCapturedCanvas.width, videoHeight: _regCapturedCanvas.height,
+        _canvas: _regCapturedCanvas },
+      _cropRect
+    );
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = 160; thumbCanvas.height = 120;
+    const src = _cropRect && _cropRect.w > 20
+      ? (() => {
+          const cc = document.createElement('canvas');
+          cc.width  = Math.round(_cropRect.w);
+          cc.height = Math.round(_cropRect.h);
+          cc.getContext('2d').drawImage(_regCapturedCanvas,
+            _cropRect.x, _cropRect.y, _cropRect.w, _cropRect.h,
+            0, 0, cc.width, cc.height);
+          return cc;
+        })()
+      : _regCapturedCanvas;
+    thumbCanvas.getContext('2d').drawImage(src, 0, 0, 160, 120);
+    const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.7);
+
+    const color = TextbookMgr.getColorForSubject(name);
+    await TextbookMgr.register({ subjectName: name, color, thumbnail, histogram });
+    stopRegCamera();
+    navigate('planner');
+    Planner.renderAll(PlannerManager.today());
+  } catch(e) {
+    console.error('[Reg] 저장 실패:', e);
+    alert('저장 중 오류가 발생했어요: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '저장하기 →';
+  }
 });
 document.getElementById('reg-subject-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-reg-save')?.click();

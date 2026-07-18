@@ -598,28 +598,37 @@
     <h2 class="sub-title">교재 등록</h2>
     <div style="width:60px"></div>
   </div>
-  <div class="reg-camera-wrap">
-    <video id="reg-video" autoplay muted playsinline></video>
-    <div class="reg-guide-box">
-      <div class="reg-corner tl"></div><div class="reg-corner tr"></div>
-      <div class="reg-corner bl"></div><div class="reg-corner br"></div>
+
+  <!-- 카메라 촬영 단계 -->
+  <div id="reg-step-camera">
+    <div class="reg-camera-wrap">
+      <video id="reg-video" autoplay muted playsinline></video>
+      <div class="reg-guide-box">
+        <div class="reg-corner tl"></div><div class="reg-corner tr"></div>
+        <div class="reg-corner bl"></div><div class="reg-corner br"></div>
+      </div>
+      <div class="reg-guide-hint">교재 표지를 화면에 크게 채워주세요</div>
     </div>
-    <div class="reg-guide-hint">교재 표지를 박스 안에 맞춰주세요</div>
-  </div>
-  <div id="reg-before-capture">
-    <button class="btn btn-primary" id="btn-capture" style="padding:14px 36px;font-size:1rem">📷 촬영하기</button>
-  </div>
-  <div id="reg-after-capture" class="hidden">
-    <div class="reg-preview-wrap">
-      <canvas id="reg-preview" width="120" height="90"></canvas>
-      <div class="reg-detected-msg">✓ 교재를 인식했어요!</div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn btn-primary" id="btn-capture" style="padding:14px 36px;font-size:1rem">📷 촬영하기</button>
     </div>
-    <div class="reg-input-wrap">
+  </div>
+
+  <!-- 크롭 단계 (촬영 후) -->
+  <div id="reg-step-crop" class="hidden">
+    <div class="reg-crop-hint">표지 부분만 <b>드래그</b>해서 선택하세요 (선택 안 하면 전체 사용)</div>
+    <div class="reg-crop-wrap">
+      <canvas id="reg-crop-canvas"></canvas>
+    </div>
+    <div class="reg-crop-actions">
+      <button class="btn btn-ghost btn-sm" id="btn-crop-reset">전체 선택</button>
+      <button class="btn btn-ghost btn-sm" id="btn-reg-retake">다시 촬영</button>
+    </div>
+    <div class="reg-input-wrap" style="margin-top:10px">
       <label class="reg-input-label">무슨 과목으로 저장할까요?</label>
       <input type="text" id="reg-subject-input" placeholder="예: 수학, 영어, 국어" maxlength="20">
     </div>
     <div class="reg-actions">
-      <button class="btn btn-ghost" id="btn-reg-retake">다시 촬영</button>
       <button class="btn btn-primary" id="btn-reg-save">저장하기 →</button>
     </div>
   </div>
