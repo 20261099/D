@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Warm cream background circle -->
+  <circle cx="256" cy="256" r="256" fill="#faf2e5"/>
+  <!-- Subtle border -->
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#e4d0bb" stroke-width="4"/>
+
+  <!-- Timer ring background -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#f0e0cc" stroke-width="18"/>
+  <!-- Timer ring progress arc (~75%) -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#c4743a" stroke-width="18"
+    stroke-linecap="round"
+    stroke-dasharray="1055.6" stroke-dashoffset="264"
+    transform="rotate(-90 256 256)"/>
+
+  <!-- Coffee cup icon in center -->
+  <!-- Cup body -->
+  <rect x="196" y="254" width="120" height="86" rx="14" fill="#c4743a"/>
+  <!-- Cup top rim -->
+  <rect x="190" y="248" width="132" height="18" rx="9" fill="#d4895a"/>
+  <!-- Handle -->
+  <path d="M316 274 Q358 274 358 304 Q358 334 316 334" fill="none" stroke="#c4743a" stroke-width="14" stroke-linecap="round"/>
+  <!-- Steam lines -->
+  <path d="M228 238 Q222 220 228 202" fill="none" stroke="#d4895a" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+  <path d="M256 232 Q250 214 256 196" fill="none" stroke="#d4895a" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+  <path d="M284 238 Q278 220 284 202" fill="none" stroke="#d4895a" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+  <!-- Saucer -->
+  <ellipse cx="256" cy="344" rx="80" ry="10" fill="#d4895a"/>
+</svg>
