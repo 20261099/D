@@ -1,9 +1,6 @@
 name: Send Review Push Notifications
 
 on:
-     schedule:
-       # 매일 23:47 UTC = 08:47 KST
-       - cron: '47 23 * * *'
      workflow_dispatch:
 
 jobs:
