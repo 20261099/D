@@ -101,6 +101,7 @@ function navigate(target) {
   closeMenu();
   switch (target) {
     case 'planner':  showScreen('screen-planner');  Planner.renderAll(PlannerManager.today()); break;
+    case 'report':   showScreen('screen-report');   Report.render(); break;
     case 'timer':
       // 이미 시간 설정했으면 바로 모드 선택으로
       if (AppState.settings.onboarded) {
@@ -597,7 +598,10 @@ function onAdjust(delta, reason, detail) {
     clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3500);
   }
   updateTimeInfoRow();
-  if (reason === 'focus') addFocusLog(delta, reason, detail);
+  if (reason === 'focus') {
+    addFocusLog(delta, reason, detail);
+    Planner.recordFocusExtend(delta); // 리포트용: 현재 세션에 집중 연장 기록
+  }
 }
 
 function onDrowsy() {
@@ -607,6 +611,9 @@ function onDrowsy() {
   const cnt = document.getElementById('drowsy-count');
   if (cnt) cnt.textContent = result.drowsyCount;
   updateTimeInfoRow();
+  // 리포트용: 현재 플래너 세션에 졸음 신호 기록
+  Planner.recordDrowsy();
+  if (result.studyCut > 0) Planner.recordStudyCut(result.studyCut);
   if (result.studyCut > 0 || result.restAdd > 0) {
     addFocusLog(result.studyCut > 0 ? -result.studyCut : 0, 'drowsy', {
       drowsyCount: result.drowsyCount, studyCut: result.studyCut, restAdd: result.restAdd

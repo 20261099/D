@@ -111,6 +111,23 @@
       <img src="images/door.png" alt="수룡이방" class="room-door-img">
       <span class="room-tag">🔮 수룡이 방</span>
     </div>
+
+    <!-- 오른쪽 상단 벽: 공부 리포트 (막대그래프 아이콘) -->
+    <div class="room-obj room-report-btn" onclick="navigate('report')">
+      <div class="room-report-icon">
+        <svg viewBox="0 0 48 48" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="40" height="40" rx="7" fill="#ede5ff" stroke="#7b6fc4" stroke-width="2.5"/>
+          <rect x="10" y="28" width="6" height="13" rx="2" fill="#a89de0"/>
+          <rect x="21" y="18" width="6" height="23" rx="2" fill="#7b6fc4"/>
+          <rect x="32" y="22" width="6" height="19" rx="2" fill="#9d90d8"/>
+          <polyline points="13,26 24,15 35,20" fill="none" stroke="#5a4fa0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="13" cy="26" r="2.5" fill="#5a4fa0"/>
+          <circle cx="24" cy="15" r="2.5" fill="#5a4fa0"/>
+          <circle cx="35" cy="20" r="2.5" fill="#5a4fa0"/>
+        </svg>
+      </div>
+      <span class="room-tag">📊 리포트</span>
+    </div>
   </div>
 </div>
 
@@ -144,6 +161,9 @@
       </div>
       <button class="menu-item" data-nav="planner">
         <span class="menu-icon">📚</span> 스터디 플래너
+      </button>
+      <button class="menu-item" data-nav="report">
+        <span class="menu-icon">📊</span> 공부 리포트
       </button>
       <button class="menu-item" data-nav="suryong">
         <span class="menu-icon">🔮</span> 수룡이 방
@@ -375,7 +395,10 @@
   <!-- 날짜 선택 헤더 -->
   <div class="planner-date-row">
     <div class="planner-date-display" id="planner-date-display">오늘</div>
-    <button class="cal-open-btn" onclick="openCalendar()">📅 날짜 선택</button>
+    <div class="planner-date-actions">
+      <button class="cal-open-btn" onclick="navigate('report')">📊 리포트</button>
+      <button class="cal-open-btn" onclick="openCalendar()">📅 날짜 선택</button>
+    </div>
   </div>
 
   <div class="planner-body">
@@ -431,6 +454,60 @@
         오늘로 돌아가기
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     공부 리포트
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-report">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="planner">← 뒤로</button>
+    <h2 class="sub-title">공부 리포트</h2>
+  </div>
+
+  <div class="report-body">
+
+    <!-- 기간 선택 -->
+    <div class="report-period-row">
+      <button class="report-period-btn" data-days="7" onclick="Report.render(7)">최근 7일</button>
+      <button class="report-period-btn active" data-days="30" onclick="Report.render(30)">최근 30일</button>
+      <button class="report-period-btn" data-days="all" onclick="Report.render(Infinity)">전체</button>
+    </div>
+
+    <!-- 오늘 vs 어제 -->
+    <div class="planner-section">
+      <div class="section-title-row">🔥 어제 대비 오늘 집중도</div>
+      <div id="report-compare" class="report-compare"></div>
+    </div>
+
+    <!-- 요약 -->
+    <div class="planner-section">
+      <div id="report-overview" class="report-overview"></div>
+    </div>
+
+    <!-- 시간대별 집중도 -->
+    <div class="planner-section">
+      <div class="section-title-row">⏰ 시간대별 집중도</div>
+      <div id="report-hourly-chart" class="report-hourly-chart"></div>
+      <div class="rh-legend">
+        <span><span class="rh-dot rh-best"></span>집중 잘 되는 시간</span>
+        <span><span class="rh-dot rh-worst"></span>집중 흐트러지는 시간</span>
+      </div>
+    </div>
+
+    <!-- 과목별 집중도 -->
+    <div class="planner-section">
+      <div class="section-title-row">📚 과목별 집중도</div>
+      <div id="report-subject-list" class="report-subject-list"></div>
+    </div>
+
+    <!-- 추천 -->
+    <div class="planner-section report-recommend-card">
+      <div class="section-title-row">💡 이렇게 공부해보세요</div>
+      <div id="report-recommendation" class="report-recommendation"></div>
+    </div>
+
   </div>
 </div>
 
@@ -658,6 +735,7 @@
 <script src="js/timer.js"></script>
 <script src="js/textbook.js"></script>
 <script src="js/planner.js"></script>
+<script src="js/report.js"></script>
 <script src="js/suryong.js"></script>
 <script src="js/review.js"></script>
 <script src="js/app.js"></script>

@@ -43,15 +43,44 @@ class PlannerManager {
   async startSession(textbook) {
     if (this._current) await this.endSession();
     this._current = {
-      id:          'ss_' + Date.now(),
-      date:        PlannerManager.today(),
-      textbookId:  textbook.id,
-      subjectName: textbook.subjectName,
-      color:       textbook.color,
-      startTime:   Date.now(),
-      endTime:     null
+      id:            'ss_' + Date.now(),
+      date:          PlannerManager.today(),
+      textbookId:    textbook.id,
+      subjectName:   textbook.subjectName,
+      color:         textbook.color,
+      startTime:     Date.now(),
+      endTime:       null,
+      // ── 집중도 리포트용 원시 신호 ────────────────────────────
+      drowsyCount:   0,   // 졸음 감지 횟수
+      focusExtendMin: 0,  // AI 타이머 집중도 기반 연장 누적(분)
+      studyCutMin:    0   // 졸음으로 인한 시간 단축 누적(분)
     };
     console.info('[Planner] 세션 시작:', textbook.subjectName);
+  }
+
+  // 진행 중 세션에 집중도 신호 기록 (app.js에서 호출)
+  recordDrowsy() {
+    if (this._current) this._current.drowsyCount++;
+  }
+  recordFocusExtend(min) {
+    if (this._current && min > 0) this._current.focusExtendMin += min;
+  }
+  recordStudyCut(min) {
+    if (this._current && min > 0) this._current.studyCutMin += min;
+  }
+
+  // 세션 원시 신호 → 0~100 집중도 점수
+  // 기준: 졸음 감지가 없고 연장도 없으면 기본 80점.
+  //   - 졸음 감지 1회당 20분 기준으로 정규화해 최대 70점까지 감점
+  //   - 집중도 기반 연장 1분당 +4점 (최대 +20점) 가점
+  static computeFocusScore(session) {
+    const durationMin = Math.max(1, (session.endTime - session.startTime) / 60000);
+    const drowsyCount  = session.drowsyCount || 0;
+    const focusExtend  = session.focusExtendMin || 0;
+    const normalizedDrowsy = drowsyCount / (durationMin / 20); // 20분당 졸음 횟수
+    const penalty = Math.min(normalizedDrowsy * 20, 70);
+    const bonus   = Math.min(focusExtend * 4, 20);
+    return Math.round(Math.max(0, Math.min(100, 80 - penalty + bonus)));
   }
 
   async endSession() {
@@ -59,10 +88,12 @@ class PlannerManager {
     this._current.endTime = Date.now();
     // 5초 이상인 세션만 저장
     if (this._current.endTime - this._current.startTime >= 5000) {
+      this._current.focusScore = PlannerManager.computeFocusScore(this._current);
       this.sessions.push({ ...this._current });
       await Storage.saveStudySessions(this.sessions);
       console.info('[Planner] 세션 저장:', this._current.subjectName,
-        PlannerManager.formatDuration(this._current.endTime - this._current.startTime));
+        PlannerManager.formatDuration(this._current.endTime - this._current.startTime),
+        '집중도', this._current.focusScore);
     }
     this._current = null;
   }

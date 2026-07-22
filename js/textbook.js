@@ -144,12 +144,15 @@ class TextbookManager {
     this._missCount  = 0;
     this._lastScanMs = 0;
 
-    // 인식 파라미터 (더 관대하게 조정)
-    this.missFrames     = 3;    // 얼굴 소실 판정 프레임 수 (5→3으로 낮춤)
-    this.scanIntervalMs = 400;  // 스캔 주기 ms (600→400으로 낮춤)
-    this.hammingThresh  = 25;   // 일치 판정 임계값 (로그 분석 후 25로 조정)
+    // 인식 파라미터
+    this.missFrames     = 6;    // 얼굴 소실 판정 프레임 수 (손으로 가릴때 오인식 방지)
+    this.scanIntervalMs = 400;  // 스캔 주기 ms
+    this.hammingThresh  = 22;   // 일치 판정 임계값 (25→22, 오인식 줄임)
     this.searchScale    = 1.0;  // 후보 영역 크기 배율
     this._debugLogged   = 0;    // 로그 빈도 조절용
+    // 연속 확정 버퍼: 같은 교재가 N번 연속 매칭돼야 최종 인식
+    this._pendingMatch  = null; // { tbId, count }
+    this._confirmNeeded = 2;    // 2번 연속 매칭 필요
   }
 
   // ── 초기화 ─────────────────────────────────────────────
@@ -232,7 +235,7 @@ class TextbookManager {
 
   setDetectionCallback(cb) { this._cb = cb; this._active = true; }
   stopDetection()          { this._active = false; this._cb = null; this._missCount = 0; }
-  resetDetected()          { this._missCount = 0; this._lastScanMs = 0; }
+  resetDetected()          { this._missCount = 0; this._lastScanMs = 0; this._pendingMatch = null; }
 
   /** 얼굴 감지됨 → 교재 없음으로 리셋 */
   resetPending() { this._missCount = 0; }
@@ -277,10 +280,9 @@ class TextbookManager {
     frame.width = w; frame.height = h;
     frame.getContext('2d').drawImage(videoEl, 0, 0, w, h);
 
-    // 후보 영역 생성 (5스케일 × 4수직오프셋 + 전체 화면 추가)
+    // 후보 영역 생성 (5스케일 × 4수직오프셋)
+    // 전체 화면은 포함하지 않음 (손/배경 오인식 원인)
     const candidates = this._buildCandidates(faceBox, w, h);
-    // 전체 화면도 후보에 추가 (작은 교재나 멀리 든 경우 대비)
-    candidates.push({ x: 0, y: 0, w, h });
 
     // 모든 후보에서 pHash 계산 → 가장 가까운 교재 선택
     let best = null;
@@ -308,11 +310,25 @@ class TextbookManager {
     }
 
     if (best) {
-      console.info(`[Textbook] 최소거리: ${best.dist} / 임계값: ${this.hammingThresh} → ${best.dist <= this.hammingThresh ? '✅ 매칭: ' + best.tb.subjectName : '❌ 미달'}`);
+      console.info(`[Textbook] 최소거리: ${best.dist} / 임계값: ${this.hammingThresh} → ${best.dist <= this.hammingThresh ? '🟡 후보: ' + best.tb.subjectName : '❌ 미달'}`);
     }
     if (best && best.dist <= this.hammingThresh) {
-      this._missCount = 0; // 매칭 후 리셋
-      this._cb(best.tb);
+      // 확정 버퍼: 같은 교재가 연속 N번 매칭돼야 최종 인식 (오인식 방지)
+      if (this._pendingMatch?.tbId === best.tb.id) {
+        this._pendingMatch.count++;
+        if (this._pendingMatch.count >= this._confirmNeeded) {
+          console.info(`[Textbook] ✅ 최종 확정: ${best.tb.subjectName} (${this._pendingMatch.count}회 연속)`);
+          this._missCount    = 0;
+          this._pendingMatch = null;
+          this._cb(best.tb);
+        }
+      } else {
+        // 다른 교재(또는 첫 매칭)로 교체
+        this._pendingMatch = { tbId: best.tb.id, count: 1 };
+      }
+    } else {
+      // 매칭 실패 → 확정 버퍼 리셋
+      this._pendingMatch = null;
     }
   }
 

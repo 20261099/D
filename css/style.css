@@ -373,6 +373,71 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .session-subject { font-size: .88rem; font-weight: 800; }
 .session-time    { font-size: .72rem; color: var(--text-dim); margin-top: 2px; }
 .session-dur     { font-family: 'Space Mono',monospace; font-size: .75rem; color: var(--text-dim); font-weight: 700; }
+
+.planner-date-actions { display: flex; gap: 8px; }
+
+/* ══ 공부 리포트 ══════════════════════════════════════════════ */
+#screen-report { background: var(--bg); justify-content: flex-start; }
+.report-body { width: 100%; max-width: 480px; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 12px; }
+
+.report-period-row { display: flex; gap: 8px; }
+.report-period-btn {
+  flex: 1; padding: 9px 0; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 99px; font-size: .78rem; font-weight: 700; color: var(--text-dim);
+  cursor: pointer; font-family: 'Nunito',sans-serif; transition: all .15s ease;
+}
+.report-period-btn:hover { border-color: var(--purple-light); }
+.report-period-btn.active { background: var(--purple-mid); border-color: var(--purple-mid); color: #fff; }
+
+/* 오늘 vs 어제 */
+.report-compare-empty { font-size: .82rem; color: var(--text-muted); text-align: center; padding: 6px 0; }
+.cmp-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.cmp-today, .cmp-yesterday { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cmp-label { font-size: .72rem; color: var(--text-muted); font-weight: 700; }
+.cmp-score { font-size: 1.5rem; font-weight: 900; color: var(--purple-deep); font-family: 'Space Mono',monospace; }
+.cmp-vs { font-size: .72rem; color: var(--text-muted); font-weight: 700; }
+.cmp-note { text-align: center; font-size: .78rem; color: var(--text-dim); margin-top: 10px; }
+.cmp-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-weight: 800; font-size: .76rem; margin-right: 6px; }
+.cmp-badge.cmp-up   { background: rgba(75,191,135,.15); color: var(--success); }
+.cmp-badge.cmp-down { background: rgba(224,85,85,.15); color: var(--danger); }
+.cmp-badge.cmp-flat { background: var(--surface3); color: var(--text-dim); }
+
+/* 요약 */
+.report-overview { display: flex; }
+.ov-item { flex: 1; text-align: center; padding: 4px 0; }
+.ov-item + .ov-item { border-left: 1px solid var(--border-light); }
+.ov-num { font-size: 1.05rem; font-weight: 900; color: var(--purple-deep); font-family: 'Space Mono',monospace; }
+.ov-label { font-size: .68rem; color: var(--text-muted); margin-top: 3px; font-weight: 600; }
+
+/* 시간대별 막대 그래프 */
+.report-hourly-chart { display: flex; align-items: flex-end; height: 92px; gap: 2px; padding-top: 6px; }
+.rh-col { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.rh-bar { width: 100%; max-width: 9px; border-radius: 3px 3px 0 0; background: var(--surface3); transition: height .25s ease; }
+.rh-bar.rh-best  { background: var(--success); }
+.rh-bar.rh-worst { background: var(--danger); }
+.rh-bar.rh-nodata { background: var(--border-light); opacity: .5; }
+.rh-hour { font-size: .55rem; color: var(--text-muted); margin-top: 4px; font-family: 'Space Mono',monospace; }
+.rh-empty { font-size: .8rem; color: var(--text-muted); text-align: center; padding: 14px 0; }
+.rh-legend { display: flex; gap: 14px; margin-top: 10px; font-size: .68rem; color: var(--text-dim); }
+.rh-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.rh-dot.rh-best  { background: var(--success); }
+.rh-dot.rh-worst { background: var(--danger); }
+
+/* 과목별 리스트 */
+.report-subject-list { display: flex; flex-direction: column; gap: 10px; }
+.rs-item { display: flex; align-items: center; gap: 10px; }
+.rs-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.rs-info { flex: 1; min-width: 0; }
+.rs-name { font-size: .8rem; font-weight: 700; margin-bottom: 4px; }
+.rs-bar-track { height: 6px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+.rs-bar-fill { height: 100%; border-radius: 99px; }
+.rs-score { font-family: 'Space Mono',monospace; font-size: .78rem; font-weight: 700; color: var(--text-dim); width: 40px; text-align: right; flex-shrink: 0; }
+.rs-empty { font-size: .8rem; color: var(--text-muted); text-align: center; padding: 10px 0; }
+
+/* 추천 카드 */
+.report-recommend-card { background: linear-gradient(135deg, var(--surface2), var(--surface3)); border-color: var(--purple-light); }
+.report-recommendation { font-size: .84rem; line-height: 1.65; color: var(--text); }
+.report-recommendation b { color: var(--purple-deep); }
 .tb-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); border: 1.5px solid var(--border-light); margin-bottom: 7px; background: var(--surface2); }
 .tb-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .tb-thumb { width: 44px; height: 33px; border-radius: 5px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
@@ -1222,3 +1287,85 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   display: flex; gap: 8px; justify-content: center;
   padding: 8px 16px;
 }
+
+/* ══ 리포트 방 아이콘 ═════════════════════════════════════ */
+.room-report-btn {
+  position: absolute;
+  top: 6%; right: 20%;
+  width: clamp(48px, 11vw, 80px);
+  z-index: 2; align-items: center;
+}
+.room-report-btn:hover { transform: translateY(-5px) rotate(-3deg) scale(1.08); }
+.room-report-icon {
+  width: 100%; aspect-ratio: 1;
+  filter: drop-shadow(2px 3px 8px rgba(60,40,130,.3));
+  transition: filter .2s;
+}
+.room-report-btn:hover .room-report-icon {
+  filter: drop-shadow(2px 4px 14px rgba(60,40,130,.5));
+}
+
+/* ══ 리포트 화면 ══════════════════════════════════════════ */
+.report-body { width: 100%; max-width: 480px; padding: 0 14px 20px; display: flex; flex-direction: column; gap: 12px; }
+.report-period-row { display: flex; gap: 6px; }
+.report-period-btn { flex: 1; padding: 7px; border: 1.5px solid var(--border); background: var(--surface2); border-radius: 8px; font-size: .78rem; font-weight: 700; cursor: pointer; font-family: 'Nunito',sans-serif; color: var(--text-dim); transition: all .18s; }
+.report-period-btn.active { background: linear-gradient(135deg,var(--purple-mid),var(--purple-deep)); color: white; border-color: transparent; }
+
+.report-compare { min-height: 60px; }
+.cmp-row { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 10px 0; }
+.cmp-today, .cmp-yesterday { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cmp-label { font-size: .7rem; color: var(--text-muted); font-weight: 700; }
+.cmp-score { font-size: 1.6rem; font-weight: 900; color: var(--purple-deep); }
+.cmp-vs { font-size: .75rem; color: var(--text-muted); font-weight: 700; }
+.cmp-note { text-align: center; font-size: .78rem; color: var(--text-dim); }
+.cmp-badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-weight: 800; font-size: .75rem; }
+.cmp-up   { background: #d4edda; color: #1a5c2e; }
+.cmp-down { background: #fde8e8; color: #a02020; }
+.cmp-flat { background: var(--surface3); color: var(--text-dim); }
+.cmp-compare-empty, .report-compare-empty { font-size: .82rem; color: var(--text-muted); text-align: center; padding: 12px 0; }
+
+.report-overview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ov-item { background: var(--surface2); border-radius: 10px; padding: 10px 6px; text-align: center; border: 1px solid var(--border-light); }
+.ov-num { font-size: 1.1rem; font-weight: 900; color: var(--purple-deep); }
+.ov-label { font-size: .65rem; color: var(--text-muted); margin-top: 3px; font-weight: 700; }
+
+.report-hourly-chart { display: flex; align-items: flex-end; gap: 2px; height: 80px; padding: 0 2px; }
+.rh-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.rh-bar { width: 100%; border-radius: 3px 3px 0 0; background: var(--purple-light); min-height: 3px; transition: height .3s; }
+.rh-best  { background: var(--purple-deep) !important; }
+.rh-worst { background: var(--danger) !important; }
+.rh-nodata { background: var(--border-light) !important; }
+.rh-hour { font-size: .55rem; color: var(--text-muted); margin-top: 2px; }
+.rh-empty { font-size: .8rem; color: var(--text-muted); text-align: center; padding: 20px 0; }
+
+.report-subject-list { display: flex; flex-direction: column; gap: 8px; }
+.rs-item { display: flex; align-items: center; gap: 8px; }
+.rs-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.rs-info { flex: 1; }
+.rs-name { font-size: .8rem; font-weight: 700; }
+.rs-bar-track { height: 6px; background: var(--surface3); border-radius: 3px; margin-top: 3px; overflow: hidden; }
+.rs-bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+.rs-score { font-size: .78rem; font-weight: 800; color: var(--purple-mid); min-width: 28px; text-align: right; }
+.rs-empty { font-size: .8rem; color: var(--text-muted); text-align: center; padding: 12px 0; }
+
+.report-recommend-card .report-recommendation { font-size: .82rem; color: var(--text); line-height: 1.75; }
+
+/* ══ 리포트 인사이트 카드 ════════════════════════════════════ */
+.insight-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--surface2); border: 1.5px solid var(--border-light);
+  margin-bottom: 8px; transition: all .2s;
+}
+.insight-card:last-child { margin-bottom: 0; }
+.insight-card:hover { border-color: var(--purple-light); background: var(--surface3); }
+.insight-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; }
+.insight-body { flex: 1; }
+.insight-title { font-size: .88rem; font-weight: 800; color: var(--purple-deep); margin-bottom: 4px; }
+.insight-desc  { font-size: .78rem; color: var(--text-dim); line-height: 1.7; }
+.insight-empty { font-size: .82rem; color: var(--text-muted); text-align: center; padding: 16px 8px; line-height: 1.8; }
+
+/* 시간대 차트 범례 */
+.rh-legend { font-size: .64rem; color: var(--text-muted); text-align: center; margin-top: 4px; }
+.legend-best  { color: var(--purple-deep); }
+.legend-worst { color: var(--danger); }
