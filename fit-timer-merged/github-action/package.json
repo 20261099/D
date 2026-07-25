@@ -1,0 +1,10 @@
+{
+  "name": "fit-timer-review-action",
+  "version": "1.0.0",
+  "description": "Fit Timer 복습 알람 푸시 발송 스크립트",
+  "main": "send-reviews.js",
+  "dependencies": {
+    "firebase-admin": "^11.0.0",
+    "web-push": "^3.6.7"
+  }
+}
