@@ -98,9 +98,10 @@ class StorageManager {
     });
   }
 
+  // [병합] 타이머1 핵심수정: avgRate/samples 누적평균 → dailyBaseline/baselineDate(그날 첫 5분 기준)
   async saveBlinkState(s)  { await this._set('blink_state', s); }
   async loadBlinkState()   {
-    return await this._get('blink_state', { avgRate: null, samples: [], lastUpdated: null });
+    return await this._get('blink_state', { dailyBaseline: null, baselineDate: null, lastUpdated: null });
   }
 
   async saveLastSession(session) {

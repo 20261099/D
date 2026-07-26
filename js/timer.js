@@ -2,7 +2,8 @@
  * timer.js — 타이머 엔진
  * [ZIP] 쉬는시간 사이클마다 기준값으로 리셋
  * [ZIP] applyDrowsiness → { studyCut, restAdd } 상세 반환
- * [TXT] _applyExtension: power curve 가중 적용
+ * [병합] _applyExtension: blink.js가 이미 점수 기반 비선형 계산을 하므로
+ *        power curve(제곱) 재적용 로직 제거 — 이중 감쇠 버그 방지
  */
 
 class TimerEngine {
@@ -76,7 +77,11 @@ class TimerEngine {
 
     if (this.mode === 'ai' && this.phase === 'study') {
       const result = BlinkEngine.onSecondTick();
-      if (result && result.extension > 0) this._applyExtension(result);
+      if (result?.baselineSet) {
+        if (this._onAdjust) this._onAdjust(0, 'baseline', result);
+      } else if (result && result.extension > 0) {
+        this._applyExtension(result);
+      }
     }
 
     if (this._onTick) this._onTick(this._remainSec, this.phase, this._elapsed);
@@ -94,7 +99,7 @@ class TimerEngine {
       this._remainSec = Math.round(this.restMin * 60);
       this._elapsed   = 0;
       if (this.mode === 'ai') {
-        // ★ 미완성 윈도우 강제 처리 → avgRate 업데이트 (부분 세션도 반영)
+        // 미완성 윈도우 강제 처리 → dailyBaseline 기준 점수 정산 (부분 세션도 반영)
         const partial = BlinkEngine.forceEndWindow();
         if (partial && this._onAdjust && partial.extension > 0) {
           this._applyExtension(partial);
@@ -103,7 +108,7 @@ class TimerEngine {
       }
       Alarm.playBreakStart();
     } else {
-      // ✅ 휴식 → 공부: 쉬는시간 기준값 리셋 (누적 방지)
+      // 휴식 → 공부: 쉬는시간 기준값 리셋 (누적 방지)
       this.phase        = 'study';
       this.restMin      = this.baseRestMin;
       this._restDelta   = 0;
@@ -117,24 +122,19 @@ class TimerEngine {
     if (this._onPhaseChange) this._onPhaseChange(this.phase, this.studyMin, this.restMin);
   }
 
-  // ── 집중도 기반 시간 연장 (power curve 적용) ──────────────────
+  // ── 집중/몰입 점수 기반 시간 연장 ──────────────────────────────
   _applyExtension(blinkResult) {
     if (this.mode !== 'ai' || this.phase !== 'study') return;
     const minutes = blinkResult.extension;
 
-    // [TXT] 비선형 가중: 작은 집중도 향상은 더 신중하게 적용
-    const ratio    = Math.min(minutes / MAX_STUDY_EXTEND_MIN, 1);
-    const weighted = ratio ** 2;
-    const curvedMin = weighted * MAX_STUDY_EXTEND_MIN;
-
     const canAdd = MAX_STUDY_EXTEND_MIN - this._studyDelta;
-    const add    = Math.min(curvedMin, canAdd);
+    const add    = Math.min(minutes, canAdd);
     if (add <= 0) return;
 
     this._remainSec  += Math.round(add * 60);
     this.studyMin    += add;
     this._studyDelta += add;
-    // blinkResult(rate, prevAvg, ratio, newAvg) 함께 전달 → focus-log 표시용
+    // blinkResult(rate, ratio, blinkScore, immersionBonus, finalScore, extension) 함께 전달 → focus-log 표시용
     if (this._onAdjust) this._onAdjust(add, 'focus', blinkResult);
   }
 
@@ -151,7 +151,6 @@ class TimerEngine {
           this.studyMin    -= safeCut;
           this._studyDelta -= safeCut;
           studyCut          = safeCut;
-          // toast용 콜백 (detail의 restAdd는 아직 미확정 → 0)
           if (this._onAdjust) this._onAdjust(-safeCut, 'drowsy', {
             drowsyCount: this._drowsyCount, studyCut, restAdd: 0
           });

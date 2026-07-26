@@ -13,11 +13,16 @@ const STATIC_ASSETS = [
   '/js/storage.js',
   '/js/alarm.js',
   '/js/tracker.js',
+  '/js/immersion.js',
   '/js/blink.js',
   '/js/drowsy.js',
   '/js/timer.js',
   '/js/app.js',
   '/icons/icon.svg',
+  '/models/tiny_face_detector_model-weights_manifest.json',
+  '/models/tiny_face_detector_model-shard1',
+  '/models/face_expression_model-weights_manifest.json',
+  '/models/face_expression_model-shard1',
 ];
 
 // ── 설치 ──────────────────────────────────────────────────────────

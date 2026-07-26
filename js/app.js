@@ -415,23 +415,25 @@ async function startTimerScreen(mode) {
   const granted = await requestCameraPermission();
   if (granted) {
     cameraArea.classList.remove('hidden');
-    await Tracker.init(videoEl, canvasEl);
-    Tracker.onResults(() => {
-      DrowsyDetector.update();
-      if (mode === 'ai' && Tracker.isCalibrated()) BlinkEngine.tick(Tracker.isEyeClosed());
-      if (Timer.getPhase() === 'study' && TextbookMgr.textbooks.length > 0) {
-        if (!Tracker.isFaceDetected()) TextbookMgr.checkFrame(videoEl);
-        else TextbookMgr.resetPending();
-      }
-      updateEyeStatus();
-    });
     try {
+      await Tracker.init(videoEl, canvasEl);
+      Tracker.onResults(() => {
+        DrowsyDetector.update();
+        if (mode === 'ai' && Tracker.isCalibrated()) BlinkEngine.tick(Tracker.isEyeClosed());
+        if (mode === 'ai') ImmersionEngine.update(Tracker.getExpression());
+        if (Timer.getPhase() === 'study' && TextbookMgr.textbooks.length > 0) {
+          if (!Tracker.isFaceDetected()) TextbookMgr.checkFrame(videoEl);
+          else TextbookMgr.resetPending();
+        }
+        updateEyeStatus();
+      });
       await Tracker.start();
       cameraOk = true;
       currentTimerVideoEl = videoEl;
       if (mode === 'ai') showCalibOverlay();
       else watchCalibration();
-    } catch {
+    } catch (e) {
+      console.error('[Tracker] 초기화/시작 실패:', e);
       cameraArea.classList.add('hidden');
       showToast('카메라 시작 실패.', 'warn');
     }
@@ -441,6 +443,7 @@ async function startTimerScreen(mode) {
   if (!cameraOk) { setEyeStatus('📵 카메라 없음', ''); currentTimerVideoEl = null; }
 
   DrowsyDetector.start();
+  if (mode === 'ai') ImmersionEngine.start();
   DrowsyDetector.onDrowsy(() => onDrowsy());
   DrowsyDetector.onAwake(() => onAwake());
   if (cameraOk && TextbookMgr.textbooks.length > 0) {
@@ -539,16 +542,30 @@ function updateBlinkStats() {
   const count   = BlinkEngine.windowBlinks;
   const elapsed = BlinkEngine.windowStart ? (now - BlinkEngine.windowStart) / 60000 : 0;
   const rate    = elapsed > 0.05 ? count / elapsed : 0;
-  const avg     = BlinkEngine.avgRate;
+  const avg     = BlinkEngine.dailyBaseline;
   const c = document.getElementById('bs-count'); if (c) c.textContent = count + '회';
   const r = document.getElementById('bs-rate');  if (r) r.textContent = rate > 0 ? rate.toFixed(1) + '/분' : '--/분';
-  const a = document.getElementById('bs-avg');   if (a) a.textContent = avg != null ? avg.toFixed(1) + '/분' : '측정 중';
+  const a = document.getElementById('bs-avg');
+  if (a) a.textContent = avg != null
+    ? avg.toFixed(1) + '/분'
+    : (BlinkEngine.calibrating ? '기준 측정 중...' : '측정 중');
+
+  const expr = Tracker.getExpression();
+  const e = document.getElementById('bs-expr');
+  if (e) {
+    if (!expr) {
+      e.textContent = '--';
+    } else {
+      e.textContent = `${EXPR_LABEL_KR[expr.label] || expr.label} (${Math.round(expr.confidence * 100)}%)`;
+    }
+  }
 }
 
 // 타이머 이벤트
 function onPhaseChange(phase, sMin, rMin) {
   if (phase === 'break') {
     DrowsyDetector.stop(); Alarm.stopDrowsinessAlarm();
+    if (AppState.settings.timerMode === 'ai') ImmersionEngine.stop();
     document.getElementById('drowsy-banner')?.classList.add('hidden');
     setEyeStatus('🍵 휴식 중', '');
     TextbookMgr.stopDetection();
@@ -572,6 +589,7 @@ function onPhaseChange(phase, sMin, rMin) {
     }
   } else {
     DrowsyDetector.start();
+    if (AppState.settings.timerMode === 'ai') ImmersionEngine.start();
     DrowsyDetector.onDrowsy(() => onDrowsy());
     DrowsyDetector.onAwake(() => onAwake());
     ReviewUI.hideBreakPopup();
@@ -587,6 +605,16 @@ function onPhaseChange(phase, sMin, rMin) {
 function fmt(n) { return Math.round(n * 10) / 10; }
 
 function onAdjust(delta, reason, detail) {
+  if (reason === 'baseline') {
+    const el = document.getElementById('adjust-toast');
+    if (el) {
+      el.innerHTML = `오늘 기준 측정 완료 <span class="toast-reason">${detail.baseline.toFixed(2)}/초</span>`;
+      el.className = 'adjust-toast plus';
+      el.classList.remove('hidden');
+      clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3500);
+    }
+    return;
+  }
   const absMin = Math.abs(delta);
   const minStr = absMin < 1 ? Math.round(absMin * 60) + '초' : fmt(absMin) + '분';
   const label  = reason === 'focus' ? '집중도 높음' : '졸음 감지';
@@ -601,6 +629,8 @@ function onAdjust(delta, reason, detail) {
   if (reason === 'focus') {
     addFocusLog(delta, reason, detail);
     Planner.recordFocusExtend(delta); // 리포트용: 현재 세션에 집중 연장 기록
+    // 리포트용: 표정 인식 기반 몰입 점수(blinkScore + immersionBonus) 기록
+    if (typeof detail?.finalScore === 'number') Planner.recordFocusScoreSample(detail.finalScore);
   }
 }
 
@@ -667,11 +697,13 @@ function addFocusLog(delta, reason, detail) {
   const entry = document.createElement('div');
   entry.className = 'fl-entry fl-' + (delta >= 0 ? 'plus' : 'minus');
   if (reason === 'focus' && detail) {
-    const r = detail.rate?.toFixed(3) || '?';
-    const a = detail.prevAvg?.toFixed(3) || '?';
+    const r  = detail.rate?.toFixed(3) || '?';
     const rt = detail.ratio != null ? (detail.ratio * 100).toFixed(0) : '?';
+    const bs = detail.blinkScore?.toFixed(1) || '0';
+    const im = detail.immersionBonus || 0;
+    const fs = detail.finalScore?.toFixed(0) || '0';
     entry.innerHTML = `<div class="fl-header"><span class="fl-time">${time}</span><span class="fl-badge fl-plus">+${fmt(delta)}분 집중</span></div>
-      <div class="fl-body"><div class="fl-formula">깜빡임 ${r}/초 (평균 ${a}/초) → <b>+${fmt(delta)}분</b></div></div>`;
+      <div class="fl-body"><div class="fl-formula">깜빡임 ${r}/초 (비율 ${rt}%) → 점수 ${bs} + 몰입 ${im} = ${fs}점 → <b>+${fmt(delta)}분</b></div></div>`;
   } else if (reason === 'drowsy' && detail) {
     const cut = detail.studyCut > 0 ? `공부 −${fmt(detail.studyCut)}분` : '유지';
     entry.innerHTML = `<div class="fl-header"><span class="fl-time">${time}</span><span class="fl-badge fl-minus">졸음 #${detail.drowsyCount}</span></div>

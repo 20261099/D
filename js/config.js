@@ -44,3 +44,27 @@ const AWAKE_MOVEMENT_CHECK = true; // 움직임도 확인
 // ===== 고개 숙임 감지 =====
 const NOD_Y_THRESHOLD = 0.10;  // y 이동 비율 임계값
 const NOD_MIN_INTERVAL_MS = 400; // 연속 까딱임 최소 간격(ms)
+
+// ===== [지원이 버전 병합] 일일 기준 보정 =====
+const BASELINE_WINDOW_SEC = 5 * 60; // 하루 첫 세션 5분간 기준 측정
+
+// ===== [지원이 버전 병합] 점수 기반 집중/몰입 =====
+const FOCUS_RATIO_THRESHOLD   = 0.9;   // 이 이하면 "집중" 상태
+const IMMERSION_HOLD_SEC      = 2;     // 표정 지속 최소 시간
+const IMMERSION_SCORE_PER_HIT = 1;     // 몰입 1회당 가산점
+const MAX_SCORE                = 100;
+
+// ===== [지원이 버전 병합] 표정 인식 (face-api.js) =====
+// 로컬 models 폴더로 자체 호스팅 (CDN/CORS 이슈 방지)
+const FACE_API_MODEL_URL = 'models';
+const EXPRESSION_CONFIDENCE_MIN = 0.5;  // face-api 기본 권장 임계값
+
+const EXPR_LABEL_KR = {
+  neutral:   '무표정',
+  happy:     '기쁨',
+  sad:       '슬픔',
+  angry:     '화남',
+  fearful:   '두려움',
+  disgusted: '혐오',
+  surprised: '놀람'
+};

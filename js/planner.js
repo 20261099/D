@@ -53,7 +53,11 @@ class PlannerManager {
       // ── 집중도 리포트용 원시 신호 ────────────────────────────
       drowsyCount:   0,   // 졸음 감지 횟수
       focusExtendMin: 0,  // AI 타이머 집중도 기반 연장 누적(분)
-      studyCutMin:    0   // 졸음으로 인한 시간 단축 누적(분)
+      studyCutMin:    0,  // 졸음으로 인한 시간 단축 누적(분)
+      // [지원이 버전 병합] 깜빡임 비율 점수 + 표정 몰입 보너스(finalScore) 표본 누적
+      // → blink.js의 dailyBaseline 기준 판정 결과를 그대로 리포트 집중도 산출에 사용
+      focusScoreSum:   0,
+      focusScoreCount: 0
     };
     console.info('[Planner] 세션 시작:', textbook.subjectName);
   }
@@ -68,18 +72,30 @@ class PlannerManager {
   recordStudyCut(min) {
     if (this._current && min > 0) this._current.studyCutMin += min;
   }
+  // [지원이 버전 병합] 블링크 윈도우(7분)마다 나오는 finalScore(0~100,
+  // blinkScore + immersionBonus)를 그대로 표본으로 누적한다.
+  recordFocusScoreSample(finalScore) {
+    if (!this._current || typeof finalScore !== 'number') return;
+    this._current.focusScoreSum   += finalScore;
+    this._current.focusScoreCount += 1;
+  }
 
   // 세션 원시 신호 → 0~100 집중도 점수
-  // 기준: 졸음 감지가 없고 연장도 없으면 기본 80점.
+  // 기준: 졸음 감지가 없고 표정/깜빡임 기반 몰입 신호도 없으면 기본 80점.
   //   - 졸음 감지 1회당 20분 기준으로 정규화해 최대 70점까지 감점
-  //   - 집중도 기반 연장 1분당 +4점 (최대 +20점) 가점
+  //   - [지원이 버전 병합] blink.js의 finalScore(깜빡임 비율 점수 + 표정 몰입 보너스)
+  //     평균을 그대로 가점 소스로 사용 (최대 +20점). finalScore가 0~100 스케일이므로
+  //     평균값을 20점 만점으로 환산한다.
   static computeFocusScore(session) {
     const durationMin = Math.max(1, (session.endTime - session.startTime) / 60000);
     const drowsyCount  = session.drowsyCount || 0;
-    const focusExtend  = session.focusExtendMin || 0;
     const normalizedDrowsy = drowsyCount / (durationMin / 20); // 20분당 졸음 횟수
     const penalty = Math.min(normalizedDrowsy * 20, 70);
-    const bonus   = Math.min(focusExtend * 4, 20);
+
+    const sampleCount   = session.focusScoreCount || 0;
+    const avgFocusScore = sampleCount > 0 ? session.focusScoreSum / sampleCount : 0;
+    const bonus = Math.min(avgFocusScore / 100 * 20, 20);
+
     return Math.round(Math.max(0, Math.min(100, 80 - penalty + bonus)));
   }
 
