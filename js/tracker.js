@@ -1,7 +1,8 @@
 /**
  * tracker.js — MediaPipe 통합 관리
- * [추가] faceRollDeg: 양쪽 눈 기울기 계산 → 옆 고개 까딱임 감지용
- * [추가] getRollDegree() / getYawDegree() (alias)
+ * [타이머2] faceRollDeg / getRollDegree() / getYawDegree() — 옆 고개 까딱임 감지용
+ * [타이머2] lastFaceBBox / getFaceBBox() — pHash 교재 인식 후보 영역 생성용
+ * [병합·타이머1] currentExpression / _detectExpression() / getExpression() — face-api.js 표정 인식 (몰입 판정용)
  */
 
 class TrackerManager {
@@ -27,6 +28,10 @@ class TrackerManager {
     // 교재 인식용: 마지막으로 감지된 얼굴 바운딩박스 (픽셀 단위)
     this.lastFaceBBox  = null;
 
+    // 표정 인식용 (face-api.js)
+    this.currentExpression = null;
+    this._lastExprCheck    = 0;
+
     this._onResultCbs  = [];
     this.isRunning     = false;
   }
@@ -34,6 +39,13 @@ class TrackerManager {
   async init(videoEl, canvasEl) {
     this.videoEl  = videoEl;
     this.canvasEl = canvasEl;
+
+    // face-api 모델 로드 (최초 1회)
+    if (!TrackerManager._faceApiLoaded) {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL);
+      await faceapi.nets.faceExpressionNet.loadFromUri(FACE_API_MODEL_URL);
+      TrackerManager._faceApiLoaded = true;
+    }
 
     this.calibDone     = false;
     this.openEAR       = null;
@@ -106,6 +118,7 @@ class TrackerManager {
       this.faceDetected  = false;
       this.currentEAR    = null;
       this.faceCentroidY = null;
+      this._detectExpression();
       this._notifyResults();
       return;
     }
@@ -114,7 +127,6 @@ class TrackerManager {
     const lm = results.multiFaceLandmarks[0];
 
     // 얼굴 바운딩박스 계산 (교재 인식 후보 영역 생성에 사용)
-    // 항상 비디오 실제 해상도 기준으로 bbox 계산 (캔버스 크기와 일치하지 않을 수 있음)
     const W = this.videoEl?.videoWidth  || this.canvasEl?.width  || 320;
     const H = this.videoEl?.videoHeight || this.canvasEl?.height || 240;
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
@@ -153,8 +165,31 @@ class TrackerManager {
     }
 
     if (ctx && this.calibDone) this._drawEyeOverlay(ctx, lm, lEAR, rEAR);
+    this._detectExpression();
     this._notifyResults();
   }
+
+  // face-api.js로 표정 감지 (300ms 스로틀)
+  async _detectExpression() {
+    const now = Date.now();
+    if (now - this._lastExprCheck < 300) return;
+    this._lastExprCheck = now;
+    if (!this.videoEl || !this.faceDetected) { this.currentExpression = null; return; }
+
+    try {
+      const result = await faceapi
+        .detectSingleFace(this.videoEl, new faceapi.TinyFaceDetectorOptions())
+        .withFaceExpressions();
+      if (!result) { this.currentExpression = null; return; }
+
+      const sorted = Object.entries(result.expressions).sort((a, b) => b[1] - a[1]);
+      this.currentExpression = { label: sorted[0][0], confidence: sorted[0][1] };
+    } catch (e) {
+      this.currentExpression = null;
+    }
+  }
+
+  getExpression() { return this.currentExpression; }
 
   _onHandResults(results) {
     if (!results.multiHandLandmarks?.length) {
@@ -204,7 +239,7 @@ class TrackerManager {
   getCentroidY()    { return this.faceCentroidY; }
   getHandVelocity() { return this.handVelocity; }
   getRollDegree()   { return this.faceRollDeg; }
-  getYawDegree()    { return this.faceRollDeg; }
+  getYawDegree()    { return this.faceRollDeg; } // alias (lateral nod detection)
   getFaceBBox()     { return this.lastFaceBBox; } // 교재 인식용
 
   isEyeClosed() {

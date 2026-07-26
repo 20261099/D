@@ -3,7 +3,7 @@
  */
 
 const AppState = {
-  settings:      { studyMin: DEFAULT_STUDY_MIN, restMin: DEFAULT_REST_MIN },
+  settings:      { studyMin: DEFAULT_STUDY_MIN, restMin: DEFAULT_REST_MIN, drowsySound: DEFAULT_DROWSY_SOUND, albumEnabled: false },
   timerMode:     null,
   cameraGranted: null,
   currentScreen: 'screen-loading',
@@ -81,6 +81,13 @@ document.addEventListener('click', async e => {
     case 'btn-auth-login':  await doLogin();  break;
     case 'btn-auth-signup': await doSignup(); break;
     case 'btn-auth-guest':
+      document.getElementById('guest-confirm-modal')?.classList.remove('hidden');
+      break;
+    case 'btn-guest-cancel':
+      document.getElementById('guest-confirm-modal')?.classList.add('hidden');
+      break;
+    case 'btn-guest-ok':
+      document.getElementById('guest-confirm-modal')?.classList.add('hidden');
       Storage.initGuest(); await initApp(null); break;
     case 'btn-logout-confirm':
       await Auth.logout(); break;
@@ -114,6 +121,8 @@ function navigate(target) {
       }
       break;
     case 'suryong':  showScreen('screen-suryong');  SuryongRoom.refresh(); break;
+    case 'album':    showScreen('screen-album');    AlbumUI.renderGallery(); break;
+    case 'playground': showScreen('screen-playground'); PlaygroundUI.enterScreen(); break;
     case 'account':  showScreen('screen-account');  renderAccountScreen(); break;
     case 'settings': showScreen('screen-settings'); renderSettings(); break;
     case 'main':     showScreen('screen-main'); break;
@@ -207,6 +216,7 @@ async function initApp(user) {
     }
     const saved = await Storage.loadSettings();
     if (saved) Object.assign(AppState.settings, saved);
+    if (typeof Alarm !== 'undefined') Alarm.setDrowsySound(AppState.settings.drowsySound || DEFAULT_DROWSY_SOUND);
     const blinkState = await Storage.loadBlinkState();
     if (blinkState) BlinkEngine.restoreState(blinkState);
 
@@ -324,7 +334,53 @@ function renderSettings() {
   rVal.textContent = AppState.settings.restMin + '분';
   sSlider.oninput = e => { AppState.settings.studyMin=+e.target.value; sVal.textContent=e.target.value+'분'; };
   rSlider.oninput = e => { AppState.settings.restMin=+e.target.value;  rVal.textContent=e.target.value+'분'; };
+  renderDrowsySoundOptions();
+  renderAlbumToggle();
 }
+
+// 졸음 알람 소리 선택 목록 렌더링. 선택하는 즉시 저장 + 반영됨(저장하기 버튼과 무관).
+function renderDrowsySoundOptions() {
+  const list = document.getElementById('drowsy-sound-list');
+  if (!list || typeof Alarm === 'undefined') return;
+  const current  = AppState.settings.drowsySound || DEFAULT_DROWSY_SOUND;
+  const presets  = Alarm.getDrowsySoundPresets();
+  list.innerHTML = presets.map(p => `
+    <div class="drowsy-sound-option ${p.id === current ? 'selected' : ''}">
+      <button class="dso-select" onclick="selectDrowsySound('${p.id}')">
+        <span class="dso-radio">${p.id === current ? '●' : ''}</span>
+        <span class="dso-label">${p.label}</span>
+      </button>
+      <button class="dso-preview" onclick="Alarm.previewDrowsySound('${p.id}')">▶ 미리듣기</button>
+    </div>`).join('');
+}
+
+async function selectDrowsySound(id) {
+  AppState.settings.drowsySound = id;
+  if (typeof Alarm !== 'undefined') Alarm.setDrowsySound(id);
+  await Storage.saveSettings(AppState.settings);
+  renderDrowsySoundOptions();
+}
+
+// 앨범(사진 자동 저장) on/off 토글. 기본값은 꺼짐(프라이버시 보호) — 언제든 개인이 직접 켜고 끌 수 있음.
+// 사진은 항상 이 기기(IndexedDB)에만 저장되고 서버로는 전송되지 않음.
+function renderAlbumToggle() {
+  const btn   = document.getElementById('btn-album-toggle');
+  const label = document.getElementById('album-toggle-label');
+  if (!btn) return;
+  const on = !!AppState.settings.albumEnabled;
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-checked', on ? 'true' : 'false');
+  if (label) label.textContent = on ? '켜짐' : '꺼짐';
+}
+
+document.getElementById('btn-album-toggle')?.addEventListener('click', async () => {
+  AppState.settings.albumEnabled = !AppState.settings.albumEnabled;
+  await Storage.saveSettings(AppState.settings);
+  renderAlbumToggle();
+  // 공부 도중에 껐다면 즉시 캡처 중단 (album.js의 AlbumRecorder._tick도 이중으로 확인함)
+  if (!AppState.settings.albumEnabled && typeof AlbumRecorder !== 'undefined') AlbumRecorder.stop();
+});
+
 document.getElementById('btn-save-settings')?.addEventListener('click', async () => {
   await Storage.saveSettings(AppState.settings);
   alert('저장되었습니다!');
@@ -415,23 +471,25 @@ async function startTimerScreen(mode) {
   const granted = await requestCameraPermission();
   if (granted) {
     cameraArea.classList.remove('hidden');
-    await Tracker.init(videoEl, canvasEl);
-    Tracker.onResults(() => {
-      DrowsyDetector.update();
-      if (mode === 'ai' && Tracker.isCalibrated()) BlinkEngine.tick(Tracker.isEyeClosed());
-      if (Timer.getPhase() === 'study' && TextbookMgr.textbooks.length > 0) {
-        if (!Tracker.isFaceDetected()) TextbookMgr.checkFrame(videoEl);
-        else TextbookMgr.resetPending();
-      }
-      updateEyeStatus();
-    });
     try {
+      await Tracker.init(videoEl, canvasEl);
+      Tracker.onResults(() => {
+        DrowsyDetector.update();
+        if (mode === 'ai' && Tracker.isCalibrated()) BlinkEngine.tick(Tracker.isEyeClosed());
+        if (mode === 'ai') ImmersionEngine.update(Tracker.getExpression());
+        if (Timer.getPhase() === 'study' && TextbookMgr.textbooks.length > 0) {
+          if (!Tracker.isFaceDetected()) TextbookMgr.checkFrame(videoEl);
+          else TextbookMgr.resetPending();
+        }
+        updateEyeStatus();
+      });
       await Tracker.start();
       cameraOk = true;
       currentTimerVideoEl = videoEl;
       if (mode === 'ai') showCalibOverlay();
       else watchCalibration();
-    } catch {
+    } catch (e) {
+      console.error('[Tracker] 초기화/시작 실패:', e);
       cameraArea.classList.add('hidden');
       showToast('카메라 시작 실패.', 'warn');
     }
@@ -440,7 +498,12 @@ async function startTimerScreen(mode) {
   }
   if (!cameraOk) { setEyeStatus('📵 카메라 없음', ''); currentTimerVideoEl = null; }
 
+  // 앨범(타임랩스): 카메라가 켜져 있고, 설정에서 앨범 저장을 켜둔 경우에만
+  // 공부 중 주기적으로 사진 캡처 (기본은 꺼짐 — 프라이버시 보호)
+  if (cameraOk && typeof AlbumRecorder !== 'undefined') AlbumRecorder.start(videoEl);
+
   DrowsyDetector.start();
+  if (mode === 'ai') ImmersionEngine.start();
   DrowsyDetector.onDrowsy(() => onDrowsy());
   DrowsyDetector.onAwake(() => onAwake());
   if (cameraOk && TextbookMgr.textbooks.length > 0) {
@@ -539,16 +602,30 @@ function updateBlinkStats() {
   const count   = BlinkEngine.windowBlinks;
   const elapsed = BlinkEngine.windowStart ? (now - BlinkEngine.windowStart) / 60000 : 0;
   const rate    = elapsed > 0.05 ? count / elapsed : 0;
-  const avg     = BlinkEngine.avgRate;
+  const avg     = BlinkEngine.dailyBaseline;
   const c = document.getElementById('bs-count'); if (c) c.textContent = count + '회';
   const r = document.getElementById('bs-rate');  if (r) r.textContent = rate > 0 ? rate.toFixed(1) + '/분' : '--/분';
-  const a = document.getElementById('bs-avg');   if (a) a.textContent = avg != null ? avg.toFixed(1) + '/분' : '측정 중';
+  const a = document.getElementById('bs-avg');
+  if (a) a.textContent = avg != null
+    ? avg.toFixed(1) + '/분'
+    : (BlinkEngine.calibrating ? '기준 측정 중...' : '측정 중');
+
+  const expr = Tracker.getExpression();
+  const e = document.getElementById('bs-expr');
+  if (e) {
+    if (!expr) {
+      e.textContent = '--';
+    } else {
+      e.textContent = `${EXPR_LABEL_KR[expr.label] || expr.label} (${Math.round(expr.confidence * 100)}%)`;
+    }
+  }
 }
 
 // 타이머 이벤트
 function onPhaseChange(phase, sMin, rMin) {
   if (phase === 'break') {
     DrowsyDetector.stop(); Alarm.stopDrowsinessAlarm();
+    if (AppState.settings.timerMode === 'ai') ImmersionEngine.stop();
     document.getElementById('drowsy-banner')?.classList.add('hidden');
     setEyeStatus('🍵 휴식 중', '');
     TextbookMgr.stopDetection();
@@ -572,6 +649,7 @@ function onPhaseChange(phase, sMin, rMin) {
     }
   } else {
     DrowsyDetector.start();
+    if (AppState.settings.timerMode === 'ai') ImmersionEngine.start();
     DrowsyDetector.onDrowsy(() => onDrowsy());
     DrowsyDetector.onAwake(() => onAwake());
     ReviewUI.hideBreakPopup();
@@ -587,6 +665,16 @@ function onPhaseChange(phase, sMin, rMin) {
 function fmt(n) { return Math.round(n * 10) / 10; }
 
 function onAdjust(delta, reason, detail) {
+  if (reason === 'baseline') {
+    const el = document.getElementById('adjust-toast');
+    if (el) {
+      el.innerHTML = `오늘 기준 측정 완료 <span class="toast-reason">${detail.baseline.toFixed(2)}/초</span>`;
+      el.className = 'adjust-toast plus';
+      el.classList.remove('hidden');
+      clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3500);
+    }
+    return;
+  }
   const absMin = Math.abs(delta);
   const minStr = absMin < 1 ? Math.round(absMin * 60) + '초' : fmt(absMin) + '분';
   const label  = reason === 'focus' ? '집중도 높음' : '졸음 감지';
@@ -601,6 +689,8 @@ function onAdjust(delta, reason, detail) {
   if (reason === 'focus') {
     addFocusLog(delta, reason, detail);
     Planner.recordFocusExtend(delta); // 리포트용: 현재 세션에 집중 연장 기록
+    // 리포트용: 표정 인식 기반 몰입 점수(blinkScore + immersionBonus) 기록
+    if (typeof detail?.finalScore === 'number') Planner.recordFocusScoreSample(detail.finalScore);
   }
 }
 
@@ -667,11 +757,13 @@ function addFocusLog(delta, reason, detail) {
   const entry = document.createElement('div');
   entry.className = 'fl-entry fl-' + (delta >= 0 ? 'plus' : 'minus');
   if (reason === 'focus' && detail) {
-    const r = detail.rate?.toFixed(3) || '?';
-    const a = detail.prevAvg?.toFixed(3) || '?';
+    const r  = detail.rate?.toFixed(3) || '?';
     const rt = detail.ratio != null ? (detail.ratio * 100).toFixed(0) : '?';
+    const bs = detail.blinkScore?.toFixed(1) || '0';
+    const im = detail.immersionBonus || 0;
+    const fs = detail.finalScore?.toFixed(0) || '0';
     entry.innerHTML = `<div class="fl-header"><span class="fl-time">${time}</span><span class="fl-badge fl-plus">+${fmt(delta)}분 집중</span></div>
-      <div class="fl-body"><div class="fl-formula">깜빡임 ${r}/초 (평균 ${a}/초) → <b>+${fmt(delta)}분</b></div></div>`;
+      <div class="fl-body"><div class="fl-formula">깜빡임 ${r}/초 (비율 ${rt}%) → 점수 ${bs} + 몰입 ${im} = ${fs}점 → <b>+${fmt(delta)}분</b></div></div>`;
   } else if (reason === 'drowsy' && detail) {
     const cut = detail.studyCut > 0 ? `공부 −${fmt(detail.studyCut)}분` : '유지';
     entry.innerHTML = `<div class="fl-header"><span class="fl-time">${time}</span><span class="fl-badge fl-minus">졸음 #${detail.drowsyCount}</span></div>
@@ -716,6 +808,7 @@ function setupTimerControls() {
   document.getElementById('btn-end-session').onclick = async () => {
     Timer.stop(); Tracker.stop(); DrowsyDetector.stop();
     TextbookMgr.stopDetection(); Alarm.stopDrowsinessAlarm();
+    if (typeof AlbumRecorder !== 'undefined') AlbumRecorder.stop();
     const cur2 = Planner.getCurrentSubject();
     await Planner.endSession();
     if (cur2) {

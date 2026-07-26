@@ -75,6 +75,20 @@
   </div>
 </div>
 
+<!-- 게스트 모드 확인 모달 -->
+<div class="modal-overlay hidden" id="guest-confirm-modal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3>로그인 없이 시작하시겠습니까?</h3>
+    </div>
+    <p class="guest-confirm-desc">비로그인 상태에서는 복습 알림 수신과 친구 추가가 불가능합니다.</p>
+    <div class="guest-confirm-actions">
+      <button class="btn btn-primary" id="btn-guest-ok">확인</button>
+      <button class="btn btn-ghost" id="btn-guest-cancel">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════
      메인 화면
 ══════════════════════════════════════════════════ -->
@@ -94,9 +108,25 @@
   <div class="room-scene">
     <div class="room-baseboard"></div>
 
-    <!-- 왼쪽 벽: 달력(image3) → 플래너 -->
+    <!-- 왼쪽 벽: 달력 → 플래너
+         (기존 calendar-icon.jpg/png 파일이 실제로는 수룡이 캐릭터 그림이 잘못
+         들어가 있어서 다른 아이콘과 구분이 안 되는 문제가 있었음 — 리포트 아이콘과
+         같은 방식으로 인라인 SVG 달력 아이콘을 직접 그려서 대체함) -->
     <div class="room-obj room-left-cal" onclick="navigate('planner')">
-      <img src="images/calendar-icon.jpg" alt="플래너" class="room-wall-img">
+      <div class="room-report-icon">
+        <svg viewBox="0 0 48 48" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="9" width="36" height="33" rx="6" fill="#ede5ff" stroke="#7b6fc4" stroke-width="2.5"/>
+          <rect x="6" y="9" width="36" height="10" rx="6" fill="#a89de0"/>
+          <rect x="6" y="15" width="36" height="4" fill="#a89de0"/>
+          <line x1="15" y1="5" x2="15" y2="13" stroke="#5a4fa0" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="33" y1="5" x2="33" y2="13" stroke="#5a4fa0" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="13" y="24" width="6" height="6" rx="1.5" fill="#9d90d8"/>
+          <rect x="21" y="24" width="6" height="6" rx="1.5" fill="#7b6fc4"/>
+          <rect x="29" y="24" width="6" height="6" rx="1.5" fill="#9d90d8"/>
+          <rect x="13" y="32" width="6" height="6" rx="1.5" fill="#7b6fc4"/>
+          <rect x="21" y="32" width="6" height="6" rx="1.5" fill="#9d90d8"/>
+        </svg>
+      </div>
       <span class="room-tag">📚 플래너</span>
     </div>
 
@@ -127,6 +157,35 @@
         </svg>
       </div>
       <span class="room-tag">📊 리포트</span>
+    </div>
+
+    <!-- 오른쪽 벽: 앨범(타임랩스) -->
+    <div class="room-obj room-right-album" onclick="navigate('album')">
+      <div class="room-report-icon">
+        <svg viewBox="0 0 48 48" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="12" width="38" height="28" rx="6" fill="#ede5ff" stroke="#7b6fc4" stroke-width="2.5"/>
+          <path d="M15 12 L19 6 H29 L33 12 Z" fill="#a89de0" stroke="#7b6fc4" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle cx="24" cy="26" r="8.5" fill="#fff" stroke="#7b6fc4" stroke-width="2.5"/>
+          <circle cx="24" cy="26" r="4.5" fill="#9d90d8"/>
+          <circle cx="35" cy="18" r="1.8" fill="#5a4fa0"/>
+        </svg>
+      </div>
+      <span class="room-tag">📸 앨범</span>
+    </div>
+
+    <!-- 왼쪽 아래: 놀이터(친구) -->
+    <div class="room-obj room-left-playground" onclick="navigate('playground')">
+      <div class="room-report-icon">
+        <svg viewBox="0 0 48 48" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <line x1="12" y1="6" x2="12" y2="42" stroke="#7b6fc4" stroke-width="3" stroke-linecap="round"/>
+          <line x1="36" y1="6" x2="36" y2="42" stroke="#7b6fc4" stroke-width="3" stroke-linecap="round"/>
+          <line x1="12" y1="10" x2="36" y2="10" stroke="#5a4fa0" stroke-width="3" stroke-linecap="round"/>
+          <path d="M12 10 Q24 34 36 10" fill="none" stroke="#a89de0" stroke-width="3" stroke-linecap="round"/>
+          <line x1="24" y1="19" x2="24" y2="30" stroke="#9d90d8" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="24" cy="34" r="4" fill="#ede5ff" stroke="#5a4fa0" stroke-width="2"/>
+        </svg>
+      </div>
+      <span class="room-tag">🛝 놀이터</span>
     </div>
   </div>
 </div>
@@ -167,6 +226,12 @@
       </button>
       <button class="menu-item" data-nav="suryong">
         <span class="menu-icon">🔮</span> 수룡이 방
+      </button>
+      <button class="menu-item" data-nav="album">
+        <span class="menu-icon">📸</span> 앨범
+      </button>
+      <button class="menu-item" data-nav="playground">
+        <span class="menu-icon">🛝</span> 놀이터
       </button>
       <button class="menu-item" data-nav="settings">
         <span class="menu-icon">⚙️</span> 설정
@@ -357,6 +422,8 @@
     <div class="bs-item"><span class="bs-label">분당</span><span class="bs-val" id="bs-rate">--/분</span></div>
     <div class="bs-divider"></div>
     <div class="bs-item"><span class="bs-label">평균</span><span class="bs-val" id="bs-avg">측정 중</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">감정감지</span><span class="bs-val" id="bs-expr">--</span></div>
   </div>
 
   <div class="focus-log-panel hidden" id="focus-log-panel">
@@ -639,6 +706,122 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     앨범 (공부 타임랩스)
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-album">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">📸 앨범</h2>
+    <button class="btn btn-ghost btn-sm" id="btn-album-select" onclick="AlbumUI.toggleSelectMode()">선택</button>
+  </div>
+  <div class="album-body">
+    <p class="album-desc">공부 시간(쉬는시간 제외) 동안 찍힌 사진을 하루 단위로 모아 타임랩스 동영상으로 저장할 수 있어요.</p>
+    <div id="album-grid" class="album-grid">
+      <div class="album-empty">불러오는 중...</div>
+    </div>
+  </div>
+
+  <!-- 다중 선택 시 하단 액션 바 -->
+  <div class="album-select-bar hidden" id="album-select-bar">
+    <button class="btn btn-primary" id="album-select-count" onclick="AlbumUI.saveSelected()">선택한 0일 저장</button>
+  </div>
+
+  <!-- 재생 모달 -->
+  <div class="modal-overlay hidden" id="album-player-modal">
+    <div class="modal-panel album-player-panel">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="album-player-title">타임랩스</h3>
+        <button onclick="AlbumUI.closePlayer()"
+          style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-dim);line-height:1">✕</button>
+      </div>
+      <div class="album-player-stage">
+        <video id="album-player-video" playsinline controls></video>
+      </div>
+      <div class="album-player-controls">
+        <button class="btn btn-ghost btn-sm" id="album-player-prev" onclick="AlbumUI.goDay(1)">◀ 이전 날짜</button>
+        <button class="btn btn-ghost btn-sm" id="album-player-next" onclick="AlbumUI.goDay(-1)">다음 날짜 ▶</button>
+      </div>
+      <button class="btn btn-ghost album-player-savebtn" onclick="AlbumUI.savePlayingDay()">💾 이 영상 저장</button>
+    </div>
+  </div>
+
+  <!-- 인코딩 진행 상황 오버레이 -->
+  <div class="album-progress-overlay hidden" id="album-progress-overlay">
+    <div class="album-progress-box">
+      <div class="album-progress-spinner"></div>
+      <div class="album-progress-text" id="album-progress-text">저장 중...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     놀이터 (친구)
+══════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-playground">
+  <div class="sub-header">
+    <button class="back-btn" data-nav="main">← 뒤로</button>
+    <h2 class="sub-title">🛝 놀이터</h2>
+  </div>
+  <div class="playground-body">
+    <div class="pg-guest-notice hidden" id="pg-guest-notice">
+      🔒 로그인해야 놀이터 기능을 쓸 수 있어요<br>
+      <small>게스트 모드에서는 친구 기능이 지원되지 않아요</small>
+    </div>
+    <div class="pg-actions" id="pg-actions">
+      <button class="btn btn-primary" onclick="PlaygroundUI.openMakeFriend()">🤝 친구 사귀기</button>
+      <button class="btn btn-ghost" onclick="PlaygroundUI.openFriendList()">👀 친구 보러 가기</button>
+    </div>
+  </div>
+
+  <!-- 친구 사귀기 모달 -->
+  <div class="modal-overlay hidden" id="pg-makefriend-modal">
+    <div class="modal-panel">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>🤝 친구 사귀기</h3>
+        <button onclick="PlaygroundUI.closeMakeFriend()"
+          style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-dim);line-height:1">✕</button>
+      </div>
+      <div class="pg-mycode-box">
+        <div class="pg-mycode-label">내 친구 코드</div>
+        <div class="pg-mycode-val" id="pg-mycode-val">------</div>
+        <div class="pg-mycode-hint">이 코드를 친구에게 알려주세요</div>
+      </div>
+      <div class="pg-search-box">
+        <input type="text" id="pg-search-input" maxlength="6" placeholder="친구 코드 입력 (영문 6자)"
+          style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter') PlaygroundUI.doSearch()">
+        <button class="btn btn-primary" onclick="PlaygroundUI.doSearch()">검색</button>
+      </div>
+      <div id="pg-search-result" class="pg-search-result"></div>
+    </div>
+  </div>
+
+  <!-- 친구 목록 모달 -->
+  <div class="modal-overlay hidden" id="pg-friendlist-modal">
+    <div class="modal-panel">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>👀 친구 목록</h3>
+        <button onclick="PlaygroundUI.closeFriendList()"
+          style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-dim);line-height:1">✕</button>
+      </div>
+      <div id="pg-friend-list" class="pg-friend-list"></div>
+    </div>
+  </div>
+
+  <!-- 친구 상세(공부 시간 + 컬렉션) 모달 -->
+  <div class="modal-overlay hidden" id="pg-frienddetail-modal">
+    <div class="modal-panel">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="pg-detail-title">친구 정보</h3>
+        <button onclick="PlaygroundUI.closeFriendDetail()"
+          style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-dim);line-height:1">✕</button>
+      </div>
+      <div id="pg-detail-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      설정
 ══════════════════════════════════════════════════ -->
 <div class="screen hidden" id="screen-settings">
@@ -662,6 +845,28 @@
         <div class="range-labels"><span>3분</span><span>60분</span></div>
       </div>
       <button class="btn btn-primary" id="btn-save-settings" style="width:100%;margin-top:16px">저장하기</button>
+    </div>
+
+    <!-- 졸음 알람 소리 -->
+    <div class="settings-section" style="margin-top:16px">
+      <div class="settings-title">🔔 졸음 알람 소리</div>
+      <p class="settings-hint">선택하면 바로 저장돼요. 미리듣기로 확인해보세요.</p>
+      <div id="drowsy-sound-list" class="drowsy-sound-list"></div>
+    </div>
+
+    <!-- 앨범(공부 타임랩스) 저장 -->
+    <div class="settings-section" style="margin-top:16px">
+      <div class="settings-title">📸 앨범 자동 저장</div>
+      <p class="settings-hint">
+        켜면 공부 중(쉬는시간 제외) 1분마다 사진을 찍어 앨범에 모아둬요.
+        사진은 <b>이 기기에만</b> 저장되고 서버로 전송되지 않아요. 언제든 껐다 켤 수 있어요.
+      </p>
+      <div class="album-toggle-row">
+        <span class="album-toggle-label" id="album-toggle-label">꺼짐</span>
+        <button class="album-toggle-switch" id="btn-album-toggle" role="switch" aria-checked="false">
+          <span class="album-toggle-knob"></span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -724,12 +929,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"   crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"           crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <!-- 앱 -->
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/alarm.js"></script>
 <script src="js/tracker.js"></script>
+<script src="js/immersion.js"></script>
 <script src="js/blink.js"></script>
 <script src="js/drowsy.js"></script>
 <script src="js/timer.js"></script>
@@ -737,6 +944,8 @@
 <script src="js/planner.js"></script>
 <script src="js/report.js"></script>
 <script src="js/suryong.js"></script>
+<script src="js/album.js"></script>
+<script src="js/playground.js"></script>
 <script src="js/review.js"></script>
 <script src="js/app.js"></script>
 </body>

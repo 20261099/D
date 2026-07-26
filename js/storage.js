@@ -94,13 +94,16 @@ class StorageManager {
   async saveSettings(s)    { await this._set('settings', s); }
   async loadSettings()     {
     return await this._get('settings', {
-      studyMin: DEFAULT_STUDY_MIN, restMin: DEFAULT_REST_MIN, timerMode: null
+      studyMin: DEFAULT_STUDY_MIN, restMin: DEFAULT_REST_MIN, timerMode: null,
+      drowsySound: DEFAULT_DROWSY_SOUND,
+      albumEnabled: false // 앨범(사진 저장) 기능은 기본 꺼짐 — 개인정보 보호를 위해 설정에서 직접 켜야 함
     });
   }
 
+  // [병합] 타이머1 핵심수정: avgRate/samples 누적평균 → dailyBaseline/baselineDate(그날 첫 5분 기준)
   async saveBlinkState(s)  { await this._set('blink_state', s); }
   async loadBlinkState()   {
-    return await this._get('blink_state', { avgRate: null, samples: [], lastUpdated: null });
+    return await this._get('blink_state', { dailyBaseline: null, baselineDate: null, lastUpdated: null });
   }
 
   async saveLastSession(session) {
@@ -201,6 +204,10 @@ class StorageManager {
   async loadReviews()            { return await this._get('review_data', null); }
   async savePushSubscription(s)  { await this._set('push_sub', s); }
   async loadPushSubscription()   { return await this._get('push_sub', null); }
+
+  // ── 놀이터(친구) 기능 — 내 친구 코드 로컬 캐시 ──────────────────
+  async saveFriendCode(code) { await this._set('friend_code', code); }
+  async loadFriendCode()     { return await this._get('friend_code', null); }
 }
 
 const Storage = new StorageManager();

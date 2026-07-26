@@ -261,6 +261,9 @@ class SuryongManager {
     this.state.points = 0;
     this.state.department = null;
     await this.save();
+    if (typeof PlaygroundManager !== 'undefined') {
+      PlaygroundManager.syncPublicProfile().catch(() => {});
+    }
     SuryongRoom.showGraduation(dept);
   }
 
