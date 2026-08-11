@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      // 기존 규칙: 본인 데이터(교재, 복습, 설정 등)는 본인만 읽고 쓸 수 있음
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── 놀이터(친구) 기능 ─────────────────────────────────────
+      // 친구 목록: 본인만 읽을 수 있음.
+      // 쓰기는 본인이 자기 목록에 추가하는 경우 + "마이쮸를 준" 상대방이
+      // 나를 자기 목록에 추가해주는 경우(상대방 uid로 문서를 만드는 경우) 둘 다 허용.
+      // → "마이쮸 주기" 한 번으로 양쪽 다 친구 목록에 서로 등록되는 걸 가능하게 함.
+      match /friends/{friendId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null &&
+          (request.auth.uid == userId || request.auth.uid == friendId);
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // 공개 프로필(공부 시간, 진열장 컬렉션 요약): 본인 또는 "친구 목록에 이미
+      // 등록된 사람"만 읽을 수 있음. 쓰기는 본인만.
+      match /public/{document} {
+        allow read: if request.auth != null && (
+          request.auth.uid == userId ||
+          exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid))
+        );
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // 친구 코드 → uid 조회용 (검색 기능에 필요).
+    // 아무 로그인 사용자나 조회는 가능하지만, 새 코드는 자기 것만 등록 가능하고
+    // 한 번 등록된 코드는 수정/삭제 불가(계정당 코드 1개, 영구 고정).
+    match /friend_codes/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

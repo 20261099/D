@@ -1,0 +1,267 @@
+/**
+ * tracker.js — MediaPipe 통합 관리
+ * [타이머2] faceRollDeg / getRollDegree() / getYawDegree() — 옆 고개 까딱임 감지용
+ * [타이머2] lastFaceBBox / getFaceBBox() — pHash 교재 인식 후보 영역 생성용
+ * [병합·타이머1] currentExpression / _detectExpression() / getExpression() — face-api.js 표정 인식 (몰입 판정용)
+ */
+
+class TrackerManager {
+  constructor() {
+    this._initialized = false;
+    this.faceMesh     = null;
+    this.hands        = null;
+    this.camera       = null;
+    this.videoEl      = null;
+    this.canvasEl     = null;
+    this.faceRollDeg  = 0;
+
+    this.openEAR       = null;
+    this.calibDone     = false;
+    this._calibSamples = [];
+
+    this.currentEAR    = null;
+    this.faceDetected  = false;
+    this.faceCentroidY = null;
+    this.handVelocity  = 0;
+    this._prevHandPos  = null;
+
+    // 교재 인식용: 마지막으로 감지된 얼굴 바운딩박스 (픽셀 단위)
+    this.lastFaceBBox  = null;
+
+    // 표정 인식용 (face-api.js)
+    this.currentExpression = null;
+    this._lastExprCheck    = 0;
+
+    this._onResultCbs  = [];
+    this.isRunning     = false;
+  }
+
+  async init(videoEl, canvasEl) {
+    this.videoEl  = videoEl;
+    this.canvasEl = canvasEl;
+
+    // face-api 모델 로드 (최초 1회)
+    if (!TrackerManager._faceApiLoaded) {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL);
+      await faceapi.nets.faceExpressionNet.loadFromUri(FACE_API_MODEL_URL);
+      TrackerManager._faceApiLoaded = true;
+    }
+
+    this.calibDone     = false;
+    this.openEAR       = null;
+    this._calibSamples = [];
+    this._onResultCbs  = [];
+
+    if (this._initialized) {
+      this.camera = new Camera(videoEl, {
+        onFrame: async () => {
+          if (!this.isRunning) return;
+          await this.faceMesh.send({ image: videoEl });
+          await this.hands.send({ image: videoEl });
+        },
+        width: 320, height: 240
+      });
+      return;
+    }
+
+    this._initialized = true;
+
+    this.faceMesh = new FaceMesh({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}`
+    });
+    this.faceMesh.setOptions({
+      maxNumFaces: 1, refineLandmarks: true,
+      minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+    });
+    this.faceMesh.onResults(r => this._onFaceResults(r));
+
+    this.hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`
+    });
+    this.hands.setOptions({
+      maxNumHands: 2, modelComplexity: 0,
+      minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+    });
+    this.hands.onResults(r => this._onHandResults(r));
+
+    this.camera = new Camera(videoEl, {
+      onFrame: async () => {
+        if (!this.isRunning) return;
+        await this.faceMesh.send({ image: videoEl });
+        await this.hands.send({ image: videoEl });
+      },
+      width: 320, height: 240
+    });
+  }
+
+  async start() {
+    this.isRunning = true;
+    this.calibDone = false;
+    this.openEAR   = null;
+    this._calibSamples = [];
+    await this.camera.start();
+  }
+
+  stop() {
+    this.isRunning = false;
+    if (this.camera) { try { this.camera.stop(); } catch (e) {} }
+    this.faceDetected  = false;
+    this.currentEAR    = null;
+    this.faceCentroidY = null;
+  }
+
+  _onFaceResults(results) {
+    const ctx = this.canvasEl?.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
+
+    if (!results.multiFaceLandmarks?.length) {
+      this.faceDetected  = false;
+      this.currentEAR    = null;
+      this.faceCentroidY = null;
+      this._detectExpression();
+      this._notifyResults();
+      return;
+    }
+
+    this.faceDetected = true;
+    const lm = results.multiFaceLandmarks[0];
+
+    // 얼굴 바운딩박스 계산 (교재 인식 후보 영역 생성에 사용)
+    const W = this.videoEl?.videoWidth  || this.canvasEl?.width  || 320;
+    const H = this.videoEl?.videoHeight || this.canvasEl?.height || 240;
+    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    for (const p of lm) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    this.lastFaceBBox = {
+      x: minX * W, y: minY * H,
+      w: (maxX - minX) * W,
+      h: (maxY - minY) * H
+    };
+
+    const lEAR = this._calcEAR(lm, [33, 160, 158, 133, 153, 144]);
+    const rEAR = this._calcEAR(lm, [362, 385, 387, 263, 373, 380]);
+    this.currentEAR = (lEAR + rEAR) / 2;
+
+    const ySum = lm.reduce((s, p) => s + p.y, 0);
+    this.faceCentroidY = ySum / lm.length;
+
+    // roll 계산: 양쪽 눈 바깥 꼭짓점 기울기 → 옆 고개 까딱임 감지용
+    const le = lm[33], re = lm[263];
+    this.faceRollDeg = Math.atan2(re.y - le.y, re.x - le.x) * (180 / Math.PI);
+
+    if (!this.calibDone) {
+      this._calibSamples.push(this.currentEAR);
+      if (this._calibSamples.length >= 30) {
+        const sorted = [...this._calibSamples].sort((a, b) => b - a);
+        const keep   = Math.floor(sorted.length * 0.7);
+        this.openEAR  = sorted.slice(0, keep).reduce((a, b) => a + b, 0) / keep;
+        this.calibDone = true;
+        console.info('[Tracker] 보정 완료 openEAR =', this.openEAR.toFixed(4));
+      }
+    }
+
+    if (ctx && this.calibDone) this._drawEyeOverlay(ctx, lm, lEAR, rEAR);
+    this._detectExpression();
+    this._notifyResults();
+  }
+
+  // face-api.js로 표정 감지 (300ms 스로틀)
+  async _detectExpression() {
+    const now = Date.now();
+    if (now - this._lastExprCheck < 300) return;
+    this._lastExprCheck = now;
+    // 일시정지 중: 표정 감지 중단 (마지막 값 유지)
+    if (typeof Timer !== 'undefined' && Timer.isPaused()) return;
+    if (!this.videoEl || !this.faceDetected) { this.currentExpression = null; return; }
+
+    try {
+      const result = await faceapi
+        .detectSingleFace(this.videoEl, new faceapi.TinyFaceDetectorOptions())
+        .withFaceExpressions();
+      if (!result) { this.currentExpression = null; return; }
+
+      const sorted = Object.entries(result.expressions).sort((a, b) => b[1] - a[1]);
+      // 'surprised'는 하품과 동일하게 인식 → 아예 null 처리 (무표정과 동일)
+      const topLabel = sorted[0][0];
+      if (topLabel === 'surprised') {
+        this.currentExpression = null;
+      } else {
+        this.currentExpression = { label: topLabel, confidence: sorted[0][1] };
+      }
+    } catch (e) {
+      this.currentExpression = null;
+    }
+  }
+
+  getExpression() { return this.currentExpression; }
+
+  _onHandResults(results) {
+    if (!results.multiHandLandmarks?.length) {
+      this.handVelocity = 0; this._prevHandPos = null; return;
+    }
+    const all  = results.multiHandLandmarks.flat();
+    const avgX = all.reduce((s, p) => s + p.x, 0) / all.length;
+    const avgY = all.reduce((s, p) => s + p.y, 0) / all.length;
+    if (this._prevHandPos) {
+      const dx = avgX - this._prevHandPos.x;
+      const dy = avgY - this._prevHandPos.y;
+      this.handVelocity = Math.sqrt(dx*dx + dy*dy);
+    } else {
+      this.handVelocity = 0;
+    }
+    this._prevHandPos = { x: avgX, y: avgY };
+  }
+
+  _calcEAR(lm, [i1, i2, i3, i4, i5, i6]) {
+    const num = this._dist(lm[i2], lm[i6]) + this._dist(lm[i3], lm[i5]);
+    const den = 2 * this._dist(lm[i1], lm[i4]);
+    return den > 0 ? num / den : 0;
+  }
+  _dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+
+  _drawEyeOverlay(ctx, lm, lEAR, rEAR) {
+    const W = this.canvasEl.width, H = this.canvasEl.height;
+    const drawEye = (idx, ear) => {
+      ctx.beginPath();
+      idx.forEach((i, n) => {
+        const p = lm[i];
+        n === 0 ? ctx.moveTo(p.x*W, p.y*H) : ctx.lineTo(p.x*W, p.y*H);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = (ear < this.openEAR * EAR_CLOSE_RATIO)
+        ? 'rgba(255,100,100,0.95)' : 'rgba(80,255,160,0.95)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    };
+    drawEye([33,160,158,133,153,144], lEAR);
+    drawEye([362,385,387,263,373,380], rEAR);
+  }
+
+  isCalibrated()    { return this.calibDone; }
+  getEAR()          { return this.currentEAR; }
+  isFaceDetected()  { return this.faceDetected; }
+  getCentroidY()    { return this.faceCentroidY; }
+  getHandVelocity() { return this.handVelocity; }
+  getRollDegree()   { return this.faceRollDeg; }
+  getYawDegree()    { return this.faceRollDeg; } // alias (lateral nod detection)
+  getFaceBBox()     { return this.lastFaceBBox; } // 교재 인식용
+
+  isEyeClosed() {
+    if (!this.calibDone || this.currentEAR === null) return false;
+    return this.currentEAR < this.openEAR * EAR_CLOSE_RATIO;
+  }
+  isEyeOpen() {
+    if (!this.calibDone || this.currentEAR === null) return false;
+    return this.currentEAR > this.openEAR * EAR_OPEN_RATIO;
+  }
+  getCalibProgress() { return Math.min(this._calibSamples.length / 30, 1); }
+
+  onResults(cb)    { this._onResultCbs.push(cb); }
+  _notifyResults() { this._onResultCbs.forEach(cb => cb()); }
+}
+
+const Tracker = new TrackerManager();
